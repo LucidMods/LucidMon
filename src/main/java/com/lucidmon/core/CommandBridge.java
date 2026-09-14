@@ -1,163 +1,141 @@
 package com.lucidmon.core;
 
-import java.lang.reflect.*;
-import java.util.*;
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.ArgumentBuilder;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
 
 /**
- * Reflection-based command bridge. This keeps the LucidMon core classes independent
- * of Yarn/intermediary names while still registering normal Brigadier commands through Fabric API.
+ * LucidMon command bridge backed directly by Fabric's public command API and Brigadier.
+ *
+ * Earlier unstable builds used reflection to stay mapping-agnostic, but that proved brittle
+ * against Fabric's package-private event implementation and Brigadier's overloaded builder
+ * methods. This class now uses the typed APIs that LucidMon already compiles against.
  */
 public final class CommandBridge {
-    private static volatile Object dispatcher;
-    private static volatile Object serverSource;
-    private static Method dispatcherExecute;
+    private static volatile CommandDispatcher<CommandSourceStack> dispatcher;
+    private static volatile CommandSourceStack serverSource;
 
     @FunctionalInterface public interface Handler { int run(Object context,Object source) throws Exception; }
     private CommandBridge() {}
 
     public static void register() {
-        try {
-            Class<?> callback = Class.forName("net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback");
-            Object event = callback.getField("EVENT").get(null);
-            Object listener = Proxy.newProxyInstance(callback.getClassLoader(), new Class<?>[]{callback}, (p,m,args)->{
-                if (m.getName().equals("register") && args != null && args.length >= 1) {
-                    dispatcher = args[0];
-                    installTree(dispatcher);
-                    LucidMon.log("Registered /lucidmon command tree.");
-                }
-                return null;
-            });
+        CommandRegistrationCallback.EVENT.register((d, registryAccess, environment) -> {
+            dispatcher = d;
+            try {
+                installTree(d);
+                LucidMon.log("Registered /lucidmon command tree.");
+            } catch (Throwable t) {
+                // Keep a command-tree bug from crashing world creation. The error remains loud
+                // in the log, and datapack functions that depend on /lucidmon will fail clearly.
+                LucidMon.error("Could not install /lucidmon command tree", t);
+            }
+        });
+    }
 
-            // Invoke Event.register through Fabric's public Event API rather than the
-            // package-private ArrayBackedEvent implementation returned by EVENT. Reflecting
-            // on event.getClass() causes IllegalAccessException on current Fabric API builds.
-            Class<?> eventApi = Class.forName("net.fabricmc.fabric.api.event.Event");
-            Method reg = eventApi.getMethod("register", Object.class);
-            reg.invoke(event, listener);
+    private static void installTree(CommandDispatcher<CommandSourceStack> d) {
+        LiteralArgumentBuilder<CommandSourceStack> root = Commands.literal("lucidmon")
+            .executes(ctx -> runHandler(LeagueManager::cmdStatus, ctx));
+
+        root.then(Commands.literal("config")
+            .then(commandLiteral("validate", LeagueManager::cmdValidateConfig))
+            .then(commandLiteral("reload", LeagueManager::cmdReload)));
+
+        root.then(Commands.literal("gyms")
+            .then(commandLiteral("place", LeagueManager::cmdPlaceAllGyms)));
+
+        root.then(Commands.literal("gym")
+            .then(Commands.literal("place").then(wordArg("id", LeagueManager::cmdPlaceGym)))
+            .then(Commands.literal("locate").then(wordArg("id", LeagueManager::cmdLocateGym))));
+
+        root.then(Commands.literal("map")
+            .then(commandLiteral("start", LeagueManager::cmdMapStart))
+            .then(commandLiteral("stop", LeagueManager::cmdMapStop))
+            .then(commandLiteral("status", LeagueManager::cmdMapStatus))
+            .then(commandLiteral("config", LeagueManager::cmdMapConfig)));
+
+        root.then(Commands.literal("mapgen")
+            .then(commandLiteral("status", LeagueManager::cmdMapGenStatus))
+            .then(commandLiteral("validate", LeagueManager::cmdMapGenValidate))
+            .then(commandLiteral("preflight", LeagueManager::cmdMapGenPreflight))
+            .then(commandLiteral("audit-biomes", LeagueManager::cmdMapGenAuditBiomes)));
+
+        root.then(Commands.literal("soulpack")
+            .then(commandLiteral("reset", LeagueManager::cmdSoulpackReset))
+            .then(commandLiteral("debug", LeagueManager::cmdSoulpackDebug)));
+
+        root.then(commandLiteral("queue", LeagueManager::cmdQueue));
+        root.then(commandLiteral("qualifiers", LeagueManager::cmdQualifiers));
+
+        root.then(Commands.literal("champion")
+            .then(commandLiteral("ready", LeagueManager::cmdChampionReady))
+            .then(Commands.literal("result").then(wordArg("result", LeagueManager::cmdChampionResult))));
+
+        root.then(Commands.literal("challenge")
+            .then(Commands.literal("info").then(wordArg("player", LeagueManager::cmdChallengeInfo)))
+            .then(Commands.literal("cancel").then(wordArg("player", LeagueManager::cmdChallengeCancel))));
+
+        root.then(Commands.literal("cooldown")
+            .then(Commands.literal("clear").then(wordArg("player", LeagueManager::cmdCooldownClear))));
+
+        root.then(Commands.literal("internal")
+            .then(commandLiteral("load", LeagueManager::cmdInternalLoad))
+            .then(commandLiteral("tick", LeagueManager::cmdInternalTick))
+            .then(commandLiteral("online", LeagueManager::cmdInternalOnline))
+            .then(commandLiteral("elite_four", LeagueManager::cmdInternalEliteFour))
+            .then(commandLiteral("voucher_used", LeagueManager::cmdInternalVoucherUsed)));
+
+        d.register(root);
+    }
+
+    private static LiteralArgumentBuilder<CommandSourceStack> commandLiteral(String name, Handler handler) {
+        return Commands.literal(name).executes(ctx -> runHandler(handler, ctx));
+    }
+
+    private static RequiredArgumentBuilder<CommandSourceStack, String> wordArg(String name, Handler handler) {
+        return Commands.argument(name, StringArgumentType.word())
+            .executes(ctx -> runHandler(handler, ctx));
+    }
+
+    private static int runHandler(Handler handler, CommandContext<CommandSourceStack> ctx) {
+        CommandSourceStack source = ctx.getSource();
+        try {
+            return handler.run(ctx, source);
         } catch (Throwable t) {
-            LucidMon.error("Could not register Fabric commands", t);
+            LucidMon.error("Command failed", t);
+            feedback(source, "LucidMon command failed: " + t.getMessage(), "red");
+            return 0;
         }
     }
 
-    private static void installTree(Object d) throws Exception {
-        Object root = literal("lucidmon");
-        executes(root, LeagueManager::cmdStatus);
-
-        Object config = literal("config");
-        then(config, commandLiteral("validate", LeagueManager::cmdValidateConfig));
-        then(config, commandLiteral("reload", LeagueManager::cmdReload));
-        then(root, config);
-
-        Object gyms = literal("gyms");
-        then(gyms, commandLiteral("place", LeagueManager::cmdPlaceAllGyms));
-        then(root, gyms);
-
-        Object gym = literal("gym");
-        Object gymPlace = literal("place"); then(gymPlace, wordArg("id", LeagueManager::cmdPlaceGym));
-        Object gymLocate = literal("locate"); then(gymLocate, wordArg("id", LeagueManager::cmdLocateGym));
-        then(gym, gymPlace); then(gym, gymLocate); then(root, gym);
-
-        Object map = literal("map");
-        then(map, commandLiteral("start", LeagueManager::cmdMapStart));
-        then(map, commandLiteral("stop", LeagueManager::cmdMapStop));
-        then(map, commandLiteral("status", LeagueManager::cmdMapStatus));
-        then(map, commandLiteral("config", LeagueManager::cmdMapConfig));
-        then(root, map);
-
-        Object mapgen = literal("mapgen");
-        then(mapgen, commandLiteral("status", LeagueManager::cmdMapGenStatus));
-        then(mapgen, commandLiteral("validate", LeagueManager::cmdMapGenValidate));
-        then(mapgen, commandLiteral("preflight", LeagueManager::cmdMapGenPreflight));
-        then(mapgen, commandLiteral("audit-biomes", LeagueManager::cmdMapGenAuditBiomes));
-        then(root, mapgen);
-
-        Object soulpack = literal("soulpack");
-        then(soulpack, commandLiteral("reset", LeagueManager::cmdSoulpackReset));
-        then(soulpack, commandLiteral("debug", LeagueManager::cmdSoulpackDebug));
-        then(root, soulpack);
-
-        then(root, commandLiteral("queue", LeagueManager::cmdQueue));
-        then(root, commandLiteral("qualifiers", LeagueManager::cmdQualifiers));
-
-        Object champion = literal("champion");
-        then(champion, commandLiteral("ready", LeagueManager::cmdChampionReady));
-        Object result = literal("result"); then(result, wordArg("result", LeagueManager::cmdChampionResult));
-        then(champion, result); then(root, champion);
-
-        Object challenge = literal("challenge");
-        Object info = literal("info"); then(info, wordArg("player", LeagueManager::cmdChallengeInfo));
-        Object cancel = literal("cancel"); then(cancel, wordArg("player", LeagueManager::cmdChallengeCancel));
-        then(challenge, info); then(challenge, cancel); then(root, challenge);
-
-        Object cooldown = literal("cooldown");
-        Object clear = literal("clear"); then(clear, wordArg("player", LeagueManager::cmdCooldownClear));
-        then(cooldown, clear); then(root, cooldown);
-
-        Object internal = literal("internal");
-        then(internal, commandLiteral("load", LeagueManager::cmdInternalLoad));
-        then(internal, commandLiteral("tick", LeagueManager::cmdInternalTick));
-        then(internal, commandLiteral("online", LeagueManager::cmdInternalOnline));
-        then(internal, commandLiteral("elite_four", LeagueManager::cmdInternalEliteFour));
-        then(internal, commandLiteral("voucher_used", LeagueManager::cmdInternalVoucherUsed));
-        then(root, internal);
-
-        Method register = Arrays.stream(d.getClass().getMethods())
-            .filter(m->m.getName().equals("register")&&m.getParameterCount()==1).findFirst().orElseThrow();
-        register.invoke(d, root);
-        dispatcherExecute = Arrays.stream(d.getClass().getMethods())
-            .filter(m->m.getName().equals("execute")&&m.getParameterCount()==2&&m.getParameterTypes()[0]==String.class)
-            .findFirst().orElse(null);
-    }
-
-    private static Object commandLiteral(String name, Handler h) throws Exception { Object b=literal(name); executes(b,h); return b; }
-    private static Object literal(String name) throws Exception {
-        Class<?> c=Class.forName("com.mojang.brigadier.builder.LiteralArgumentBuilder");
-        return c.getMethod("literal",String.class).invoke(null,name);
-    }
-    private static Object wordArg(String name, Handler h) throws Exception {
-        Class<?> sat=Class.forName("com.mojang.brigadier.arguments.StringArgumentType");
-        Object argType=sat.getMethod("word").invoke(null);
-        Class<?> rat=Class.forName("com.mojang.brigadier.builder.RequiredArgumentBuilder");
-        Class<?> at=Class.forName("com.mojang.brigadier.arguments.ArgumentType");
-        Object b=rat.getMethod("argument",String.class,at).invoke(null,name,argType);
-        executes(b,h); return b;
-    }
-    private static void executes(Object b, Handler h) throws Exception {
-        Class<?> command=Class.forName("com.mojang.brigadier.Command");
-        Object proxy=Proxy.newProxyInstance(command.getClassLoader(),new Class<?>[]{command},(p,m,args)->{
-            if(m.getName().equals("run")){
-                Object ctx=args[0]; Object src=contextSource(ctx);
-                try{return h.run(ctx,src);}catch(Throwable t){LucidMon.error("Command failed",t);feedback(src,"LucidMon command failed: "+t.getMessage(),"red");return 0;}
-            }
-            return 0;
-        });
-        Method ex=Arrays.stream(b.getClass().getMethods()).filter(m->m.getName().equals("executes")&&m.getParameterCount()==1).findFirst().orElseThrow();
-        ex.invoke(b,proxy);
-    }
-    private static void then(Object parent,Object child)throws Exception{
-        Method m=Arrays.stream(parent.getClass().getMethods()).filter(x->x.getName().equals("then")&&x.getParameterCount()==1).findFirst().orElseThrow();
-        m.invoke(parent,child);
-    }
-    private static Object contextSource(Object ctx)throws Exception{return ctx.getClass().getMethod("getSource").invoke(ctx);}
-
     public static String arg(Object ctx,String name){
-        try{return String.valueOf(ctx.getClass().getMethod("getArgument",String.class,Class.class).invoke(ctx,name,String.class));}
-        catch(Exception e){return "";}
+        if (ctx instanceof CommandContext<?> context) {
+            try { return String.valueOf(context.getArgument(name, String.class)); }
+            catch (Exception ignored) { return ""; }
+        }
+        return "";
     }
-    public static void captureServerSource(Object source){ if(source!=null) serverSource=source; }
+
+    public static void captureServerSource(Object source){
+        if(source instanceof CommandSourceStack s) serverSource=s;
+    }
     public static Object serverSource(){return serverSource;}
 
     public static int executeServer(String command){return execute(command,serverSource);}
     public static int execute(String command,Object source){
-        if(dispatcher==null||source==null)return 0;
-        try{
-            Method m=dispatcherExecute;
-            if(m==null)m=Arrays.stream(dispatcher.getClass().getMethods())
-                .filter(x->x.getName().equals("execute")&&x.getParameterCount()==2&&x.getParameterTypes()[0]==String.class).findFirst().orElse(null);
-            if(m==null)return 0;
-            Object r=m.invoke(dispatcher,command,source); return r instanceof Number n?n.intValue():0;
-        }catch(InvocationTargetException e){LucidMon.warn("Command failed: /"+command+" -> "+e.getTargetException().getMessage());return 0;}
-        catch(Throwable t){LucidMon.warn("Command bridge error for /"+command+": "+t.getMessage());return 0;}
+        CommandDispatcher<CommandSourceStack> d = dispatcher;
+        if(d==null || !(source instanceof CommandSourceStack s)) return 0;
+        try {
+            return d.execute(command,s);
+        } catch(Throwable t){
+            LucidMon.warn("Command failed: /"+command+" -> "+t.getMessage());
+            return 0;
+        }
     }
 
     public static void feedback(Object source,String message,String color){
