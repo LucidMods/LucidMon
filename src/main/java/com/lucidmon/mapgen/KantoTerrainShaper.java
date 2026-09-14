@@ -4,11 +4,11 @@ import com.lucidmon.core.MapGenConfigManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.NoiseColumn;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.Locale;
 
@@ -42,79 +42,62 @@ public final class KantoTerrainShaper {
         return insideSafeLand(x, z, cfg) && macroLandScore(x, z, cfg, layout) > 0.0;
     }
 
-    /** Seed-independent large-scale silhouette used by both terrain and biomes. */
+    /** Seed-independent large-scale silhouette shared by terrain and biomes. */
     public static double macroLandScore(int x, int z, MapGenConfigManager.KantoConfig cfg, KantoLayout layout) {
-        if (!insideSafeLand(x, z, cfg)) return -2.0;
-        int cx = cfg.centerX(), cz = cfg.centerZ();
-        double score = -2.0;
-
-        // Main Kanto-like island mass built from overlapping lobes rather than a
-        // single oval. Seed noise later roughens these coastlines without moving
-        // the recognizable macro layout.
-        score = Math.max(score, ellipseScore(x, z, cx - 120, cz - 180, 2050, 1670));
-        score = Math.max(score, ellipseScore(x, z, cx - 80, cz - 1650, 1120, 1050));
-        score = Math.max(score, ellipseScore(x, z, cx - 1320, cz + 820, 980, 920));
-        score = Math.max(score, ellipseScore(x, z, cx + 1320, cz + 360, 1080, 980));
-
-        // Southern volcanic island.
-        KantoLayout.Volcano v = layout.volcano();
-        score = Math.max(score, ellipseScore(x, z, v.x(), v.z(), v.radiusX(), v.radiusZ()));
-
-        // Southeast tropical chain: separate islands rather than a causeway.
-        KantoLayout.Region jungle = layout.region("southeastJungleChain");
-        if (jungle != null) {
-            score = Math.max(score, ellipseScore(x, z, jungle.centerX() - 260, jungle.centerZ() - 180, 420, 330));
-            score = Math.max(score, ellipseScore(x, z, jungle.centerX() + 240, jungle.centerZ() + 80, 360, 300));
-            score = Math.max(score, ellipseScore(x, z, jungle.centerX() - 40, jungle.centerZ() + 430, 300, 240));
-        }
-
-        KantoLayout.Region mushroom = layout.region("mushroomIsland");
-        if (mushroom != null) score = Math.max(score, ellipseScore(x, z, mushroom.centerX(), mushroom.centerZ(), mushroom.radius(), mushroom.radius()));
-
-        KantoLayout.Area seafoam = layout.area("seafoamIslands");
-        if (seafoam != null && seafoam.enabled()) {
-            int rx = Math.max(160, seafoam.radiusX());
-            int rz = Math.max(140, seafoam.radiusZ());
-            score = Math.max(score, ellipseScore(x, z, seafoam.x() - rx / 3, seafoam.z() - 40, rx * 2 / 3, rz * 3 / 4));
-            score = Math.max(score, ellipseScore(x, z, seafoam.x() + rx / 3, seafoam.z() + 70, rx * 2 / 3, rz * 3 / 4));
-        }
-        return score;
+        return KantoShape.macroLandScore(x, z, cfg, layout);
     }
 
     public static int targetSurfaceY(int x, int z, RandomState random) {
         MapGenConfigManager.KantoConfig cfg = MapGenConfigManager.current.kanto();
         KantoLayout layout = KantoLayout.current();
-        if (!insidePlayable(x, z, cfg)) return oceanFloorY(x, z, random);
-        if (!insideSafeLand(x, z, cfg)) return oceanFloorY(x, z, random);
+        if (!insidePlayable(x, z, cfg) || !insideSafeLand(x, z, cfg)) {
+            return oceanFloorY(x, z, random, -4.0);
+        }
 
+        // Signed land distance plus gentle low-frequency perturbation gives us a
+        // recognizable fixed silhouette without a ruler-straight coastline.
         double macro = macroLandScore(x, z, cfg, layout);
-        double coast = smoothNoise(random, COAST_NOISE, x, z, 160) * 0.16;
-        if (macro + coast <= 0.0) return oceanFloorY(x, z, random);
+        double effective = macro + smoothNoise(random, COAST_NOISE, x, z, 180) * 0.18;
+        if (effective <= 0.0) return oceanFloorY(x, z, random, effective);
 
-        int y = 70 + (int)Math.round(Math.min(1.0, Math.max(0.0, macro)) * 10.0
-                + smoothNoise(random, HEIGHT_NOISE, x, z, 96) * 7.0);
-        y = applyMountains(y, x, z, cfg, layout);
+        // The first prototype jumped immediately from a ~45 ocean floor to Y70+
+        // dry land. Layout v2 instead creates a broad beach/shelf band. The first
+        // dry blocks sit only one block above sea level and elevation grows over
+        // roughly 200-300 blocks inland, so ordinary coasts are walkable.
+        double inland = smoothStep(clamp01(effective / 1.20));
+        double detail = smoothNoise(random, HEIGHT_NOISE, x, z, 104);
+        int lowland = SEA_LEVEL + 1 + (int)Math.round(inland * 11.0 + detail * 6.0 * inland);
+
+        // Fade mountain influence near the coast. This preserves dramatic peaks
+        // inland while preventing their footprint from creating vertical sea walls.
+        int mountainous = applyMountains(lowland, x, z, cfg, layout);
+        double mountainBlend = smoothStep(clamp01(effective / 0.72));
+        int y = (int)Math.round(lowland + (mountainous - lowland) * mountainBlend);
+
         y = applySettlementFlattening(y, x, z, layout);
         y = applyRouteGrading(y, x, z, cfg, layout, random);
-        return Math.max(SEA_LEVEL + 3, Math.min(250, y));
+        return Math.max(SEA_LEVEL + 1, Math.min(250, y));
     }
 
     /** Deterministic approximation used by tunnel entrances and base-column queries. */
     public static int targetSurfaceYNoSeed(int x, int z) {
         MapGenConfigManager.KantoConfig cfg = MapGenConfigManager.current.kanto();
         KantoLayout layout = KantoLayout.current();
-        if (!insidePlayable(x, z, cfg) || !insideSafeLand(x, z, cfg) || macroLandScore(x, z, cfg, layout) <= 0.0) return 46;
-        int y = 72 + (int)Math.round(Math.min(1.0, Math.max(0.0, macroLandScore(x, z, cfg, layout))) * 8.0);
-        y = applyMountains(y, x, z, cfg, layout);
+        double macro = macroLandScore(x, z, cfg, layout);
+        if (!insidePlayable(x, z, cfg) || !insideSafeLand(x, z, cfg) || macro <= 0.0) return 52;
+
+        double inland = smoothStep(clamp01(macro / 1.20));
+        int lowland = SEA_LEVEL + 1 + (int)Math.round(inland * 11.0);
+        int mountainous = applyMountains(lowland, x, z, cfg, layout);
+        double mountainBlend = smoothStep(clamp01(macro / 0.72));
+        int y = (int)Math.round(lowland + (mountainous - lowland) * mountainBlend);
         y = applySettlementFlattening(y, x, z, layout);
-        return Math.max(SEA_LEVEL + 3, Math.min(250, y));
+        return Math.max(SEA_LEVEL + 1, Math.min(250, y));
     }
 
     public static int baseHeight(int x, int z, Heightmap.Types type, RandomState random) {
         int surface = targetSurfaceY(x, z, random);
-        if (surface <= SEA_LEVEL) {
-            return isOceanFloor(type) ? surface + 1 : SEA_LEVEL + 1;
-        }
+        if (surface <= SEA_LEVEL) return isOceanFloor(type) ? surface + 1 : SEA_LEVEL + 1;
         return surface + 1;
     }
 
@@ -227,15 +210,18 @@ public final class KantoTerrainShaper {
     private static int applyMountains(int base, int x, int z, MapGenConfigManager.KantoConfig cfg, KantoLayout layout) {
         int y = base;
         KantoLayout.Region snow = layout.region("northSnowCrown");
-        if (snow != null) y = Math.max(y, mountainHeight(x, z, snow.centerX(), snow.centerZ(), snow.radius(), snow.radius(), 168, base));
+        if (snow != null) y = Math.max(y, mountainHeight(x, z, snow.centerX(), snow.centerZ(), snow.radius(), snow.radius(), 176, base));
         KantoLayout.Region nw = layout.region("northwestHighlands");
-        if (nw != null) y = Math.max(y, mountainHeight(x, z, nw.centerX(), nw.centerZ(), nw.radius(), nw.radius(), 145, base));
+        if (nw != null) y = Math.max(y, mountainHeight(x, z, nw.centerX(), nw.centerZ(), nw.radius(), snow == null ? nw.radius() : nw.radius(), 148, base));
         KantoLayout.Zone ne = layout.zone("northeastHighlands");
-        if (ne != null) y = Math.max(y, mountainHeight(x, z, ne.x(), ne.z(), 520, 480, 148, base));
+        if (ne != null) y = Math.max(y, mountainHeight(x, z, ne.x(), ne.z(), 520, 480, 150, base));
 
         KantoLayout.Area moon = layout.area("mtMoon");
-        if (moon != null && moon.enabled()) y = Math.max(y, mountainHeight(x, z, moon.x(), moon.z(), Math.max(1, moon.radiusX()), Math.max(1, moon.radiusZ()), 185, base));
-        else y = Math.max(y, mountainHeight(x, z, cfg.mtMoonX(), cfg.mtMoonZ(), 520, 460, 185, base));
+        if (moon != null && moon.enabled()) {
+            y = Math.max(y, mountainHeight(x, z, moon.x(), moon.z(), Math.max(1, moon.radiusX()), Math.max(1, moon.radiusZ()), 190, base));
+        } else {
+            y = Math.max(y, mountainHeight(x, z, cfg.mtMoonX(), cfg.mtMoonZ(), 520, 460, 190, base));
+        }
 
         KantoLayout.Area rock = layout.area("rockTunnel");
         if (rock != null && rock.enabled()) y = Math.max(y, mountainHeight(x, z, rock.x(), rock.z(), Math.max(1, rock.radiusX()), Math.max(1, rock.radiusZ()), 152, base));
@@ -245,7 +231,7 @@ public final class KantoTerrainShaper {
         KantoLayout.Volcano v = layout.volcano();
         double nd = ellipseDistance(x, z, v.x(), v.z(), v.radiusX(), v.radiusZ());
         if (nd < 1.0) {
-            int cone = 70 + (int)Math.round((v.peakY() - 70) * Math.pow(1.0 - nd, 1.55));
+            int cone = 68 + (int)Math.round((v.peakY() - 68) * Math.pow(1.0 - nd, 1.48));
             double craterDist = Math.hypot(x - v.x(), z - v.z());
             if (craterDist < v.craterRadius()) {
                 double rim = craterDist / Math.max(1.0, v.craterRadius());
@@ -258,8 +244,15 @@ public final class KantoTerrainShaper {
     }
 
     private static int applySettlementFlattening(int y, int x, int z, KantoLayout layout) {
-        y = flatten(y, x, z, layout.startingCity(), 74);
+        // The southwest starter settlement is intentionally the smallest city pad.
+        y = flatten(y, x, z, layout.startingCity(), 72);
+
+        // Celadon/central metro is the dominant build site and receives its own
+        // larger, flatter footprint rather than sharing the generic zone size.
+        y = flatten(y, x, z, layout.centralCity(), 74);
+
         for (KantoLayout.Zone zone : layout.zones()) {
+            if (zone.id().equalsIgnoreCase("centralMetro")) continue;
             int target = switch (zone.id().toLowerCase(Locale.ROOT)) {
                 case "leagueplateau" -> 128;
                 case "northwesthighlands", "northeasthighlands" -> 96;
@@ -306,9 +299,11 @@ public final class KantoTerrainShaper {
     private static int targetSurfaceWithoutRoutes(int x, int z, MapGenConfigManager.KantoConfig cfg, KantoLayout layout, RandomState random) {
         double macro = macroLandScore(x, z, cfg, layout);
         if (!insideSafeLand(x, z, cfg) || macro <= 0.0) return SEA_LEVEL;
-        int y = 70 + (int)Math.round(Math.min(1.0, macro) * 10.0 + smoothNoise(random, HEIGHT_NOISE, x, z, 96) * 7.0);
-        y = applyMountains(y, x, z, cfg, layout);
-        return applySettlementFlattening(y, x, z, layout);
+        double inland = smoothStep(clamp01(macro / 1.20));
+        int lowland = SEA_LEVEL + 1 + (int)Math.round(inland * 11.0 + smoothNoise(random, HEIGHT_NOISE, x, z, 104) * 6.0 * inland);
+        int mountain = applyMountains(lowland, x, z, cfg, layout);
+        double mountainBlend = smoothStep(clamp01(macro / 0.72));
+        return applySettlementFlattening((int)Math.round(lowland + (mountain - lowland) * mountainBlend), x, z, layout);
     }
 
     private static void applyVolcanoLava(ChunkAccess chunk, BlockPos.MutableBlockPos pos, int x, int z, int surface) {
@@ -320,8 +315,14 @@ public final class KantoTerrainShaper {
         if (lavaY > surface && lavaY < chunk.getMaxBuildHeight()) chunk.setBlockState(pos.set(x, lavaY, z), Blocks.LAVA.defaultBlockState(), false);
     }
 
-    private static int oceanFloorY(int x, int z, RandomState random) {
-        return 45 + (int)Math.round(smoothNoise(random, HEIGHT_NOISE, x, z, 128) * 5.0);
+    private static int oceanFloorY(int x, int z, RandomState random, double signedLandScore) {
+        // Near shore: a broad shallow shelf around Y58-60. Farther out: ease down
+        // to the existing deep-ocean floor near Y45. This removes the first
+        // prototype's abrupt 20+ block coastal walls.
+        double deep = smoothStep(clamp01((-signedLandScore) / 2.1));
+        int base = 59 - (int)Math.round(deep * 14.0);
+        int detail = (int)Math.round(smoothNoise(random, HEIGHT_NOISE, x, z, 144) * (1.5 + deep * 2.0));
+        return Math.max(42, Math.min(60, base + detail));
     }
 
     private static double smoothNoise(RandomState random, ResourceLocation salt, int x, int z, int scale) {
@@ -347,10 +348,6 @@ public final class KantoTerrainShaper {
         return base + (int)Math.round((peak - base) * strength);
     }
 
-    private static double ellipseScore(int x, int z, int cx, int cz, int rx, int rz) {
-        return 1.0 - ellipseDistance(x, z, cx, cz, rx, rz);
-    }
-
     private static double ellipseDistance(int x, int z, int cx, int cz, int rx, int rz) {
         double dx = (x - cx) / (double)Math.max(1, rx), dz = (z - cz) / (double)Math.max(1, rz);
         return Math.sqrt(dx * dx + dz * dz);
@@ -373,6 +370,9 @@ public final class KantoTerrainShaper {
         double t = Math.max(0.0, Math.min(1.0, ((px - ax) * vx + (pz - az) * vz) / len2));
         return Math.hypot(px - (ax + t * vx), pz - (az + t * vz));
     }
+
+    private static double clamp01(double v) { return Math.max(0.0, Math.min(1.0, v)); }
+    private static double smoothStep(double v) { return v * v * (3.0 - 2.0 * v); }
 
     private static boolean isOceanFloor(Heightmap.Types type) {
         return type == Heightmap.Types.OCEAN_FLOOR || type == Heightmap.Types.OCEAN_FLOOR_WG;
