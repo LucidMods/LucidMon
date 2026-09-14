@@ -7,11 +7,11 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 /**
- * Configuration/preflight layer for LucidMon MapGen.
+ * Configuration and validation layer for LucidMon MapGen.
  *
- * unstable.2 deliberately separates profile configuration from terrain generation.
- * The config is created and validated now so server owners can finalize profile values
- * before a later build enables the custom Kanto chunk generator.
+ * KANTO_ARCHIPELAGO is an active runtime profile. This class validates the
+ * profile before world activation; KantoMapGen separately verifies that the
+ * matching world preset is actually active before generation proceeds.
  */
 public final class MapGenConfigManager {
     public static final Path CONFIG_PATH = Path.of("config", "LucidMon", "MapGen", "LucidMon_mapgen.JSON5");
@@ -136,12 +136,6 @@ public final class MapGenConfigManager {
             routesEnabled, routeStyle, routeWidth, cityRoadWidth,
             mtMoonEnabled, mtMoonX, mtMoonZ, mtMoonConnected
         );
-
-        // This is intentionally explicit for unstable.2. The config/profile is now part of
-        // LucidMon, but the absolute-coordinate custom chunk generator is not enabled yet.
-        if (mapType == MapType.KANTO_ARCHIPELAGO) {
-            r.warnings.add("KANTO_ARCHIPELAGO is configured, but unstable.2 is a MapGen PRE-FLIGHT build: do not create the final world yet. The absolute-coordinate terrain generator is not active in this build.");
-        }
 
         return new RuntimeConfig(mapType, lock, kc);
     }

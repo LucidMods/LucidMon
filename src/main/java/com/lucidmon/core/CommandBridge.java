@@ -27,8 +27,12 @@ public final class CommandBridge {
                 }
                 return null;
             });
-            Method reg = Arrays.stream(event.getClass().getMethods())
-                .filter(m->m.getName().equals("register")&&m.getParameterCount()==1).findFirst().orElseThrow();
+
+            // Invoke Event.register through Fabric's public Event API rather than the
+            // package-private ArrayBackedEvent implementation returned by EVENT. Reflecting
+            // on event.getClass() causes IllegalAccessException on current Fabric API builds.
+            Class<?> eventApi = Class.forName("net.fabricmc.fabric.api.event.Event");
+            Method reg = eventApi.getMethod("register", Object.class);
             reg.invoke(event, listener);
         } catch (Throwable t) {
             LucidMon.error("Could not register Fabric commands", t);
