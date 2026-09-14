@@ -50,10 +50,7 @@ public final class KantoShape {
         return signedPolygonDistance(x - cfg.centerX(), z - cfg.centerZ(), MAINLAND) / COAST_SCALE;
     }
 
-    /**
-     * Full dry-land mask: mainland, volcano, the small eastern stepping islets,
-     * and optional profile islands such as Seafoam/mushroom fields.
-     */
+    /** Full dry-land mask: mainland, volcano, stepping islets and mushroom island. */
     public static double macroLandScore(int x, int z, MapGenConfigManager.KantoConfig cfg, KantoLayout layout) {
         if (!KantoTerrainShaper.insideSafeLand(x, z, cfg)) return -12.0;
 
@@ -61,8 +58,10 @@ public final class KantoShape {
         KantoLayout.Volcano v = layout.volcano();
         score = Math.max(score, ellipseScore(x, z, v.x(), v.z(), v.radiusX(), v.radiusZ()) * 2.0);
 
-        // Three small islands to the right/east of the volcano, matching the
-        // visual progression in the Kanto reference rather than a giant chain.
+        // Three small islands to the right/east of the volcano. These serve the
+        // southern island-chain role directly; the old oversized Seafoam ellipses
+        // are intentionally not added to the macro mask because they merged into
+        // the volcano and recreated the blobby prototype silhouette.
         score = Math.max(score, ellipseScore(x, z, v.x() + 610, v.z() + 20, 135, 105) * 1.7);
         score = Math.max(score, ellipseScore(x, z, v.x() + 875, v.z() - 45, 105, 82) * 1.7);
         score = Math.max(score, ellipseScore(x, z, v.x() + 1080, v.z() - 105, 78, 62) * 1.7);
@@ -71,16 +70,6 @@ public final class KantoShape {
         if (mushroom != null) {
             score = Math.max(score, ellipseScore(x, z, mushroom.centerX(), mushroom.centerZ(),
                     mushroom.radius(), mushroom.radius()) * 1.6);
-        }
-
-        KantoLayout.Area seafoam = layout.area("seafoamIslands");
-        if (seafoam != null && seafoam.enabled()) {
-            int rx = Math.max(150, seafoam.radiusX());
-            int rz = Math.max(130, seafoam.radiusZ());
-            score = Math.max(score, ellipseScore(x, z, seafoam.x() - rx / 3, seafoam.z() - 35,
-                    Math.max(90, rx * 2 / 3), Math.max(80, rz * 3 / 4)) * 1.7);
-            score = Math.max(score, ellipseScore(x, z, seafoam.x() + rx / 3, seafoam.z() + 65,
-                    Math.max(90, rx * 2 / 3), Math.max(80, rz * 3 / 4)) * 1.7);
         }
         return score;
     }
@@ -101,7 +90,8 @@ public final class KantoShape {
     }
 
     public static boolean isFarNorth(int x, int z, MapGenConfigManager.KantoConfig cfg) {
-        return z - cfg.centerZ() <= -1500;
+        // Starts shortly north of Mt. Moon rather than only at the map's top edge.
+        return z - cfg.centerZ() <= -1225;
     }
 
     public static boolean isMainland(int x, int z, MapGenConfigManager.KantoConfig cfg) {
