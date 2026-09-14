@@ -18,9 +18,12 @@
   },
 
   gyms: {
-    // RGS natural gym/League world generation is disabled by LucidMon.
-    // These exact templates are placed only where you configure them.
-    //
+    // true (recommended/default): LucidMon suppresses natural RGS gym and
+    // Kanto League structure spawning. Manual /lucidmon gym(s) place commands
+    // and Minecraft /place structure still work normally.
+    // false: restore RGS's native natural gym/League world generation.
+    suppressNaturalWorldgen: true,
+
     // false (recommended default): place with /lucidmon gyms place after
     //                               choosing and validating all coordinates.
     // true: LucidMon attempts to place all enabled, unplaced templates after

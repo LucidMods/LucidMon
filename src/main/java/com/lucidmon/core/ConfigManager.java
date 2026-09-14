@@ -63,6 +63,7 @@ public final class ConfigManager {
         );
 
         Map<String,Object> gymRoot = map(root.get("gyms"));
+        boolean suppressNaturalWorldgen = bool(gymRoot.get("suppressNaturalWorldgen"), true, "gyms.suppressNaturalWorldgen", r);
         boolean autoPlace = bool(gymRoot.get("autoPlaceOnServerStart"), false, "gyms.autoPlaceOnServerStart", r);
         LinkedHashMap<String,GymConfig> gyms = new LinkedHashMap<>();
         for (Map.Entry<String,GymConfig> e : def.gyms.entrySet()) {
@@ -123,7 +124,7 @@ public final class ConfigManager {
             r.warnings.add("All enabled gym coordinates are still at the default placeholder (0,80,0). Keep autoPlaceOnServerStart=false until you configure them.");
         }
 
-        return new RuntimeConfig(playArea, autoPlace, gyms, champCfg, q, v);
+        return new RuntimeConfig(playArea, suppressNaturalWorldgen, autoPlace, gyms, champCfg, q, v);
     }
 
     private static boolean allSamePlaceholder(Map<String,GymConfig> gyms) {
@@ -168,7 +169,7 @@ public final class ConfigManager {
     public record ChampionConfig(ChampionType type,String playerName,ArenaConfig arena,BattleFormat battleFormat,long retryCooldownSeconds,boolean requireReadyConfirmation,ChallengerDisconnect challengerDisconnectBehavior,ChampionDisconnect championDisconnectBehavior) {}
     public record QualificationConfig(int tournamentSlots,boolean preserveVoucherClaimOrder) {}
     public record VoucherConfig(String displayName,boolean grantAfterEliteFour,boolean oneOpenClaimPerPlayer) {}
-    public record RuntimeConfig(PlayAreaConfig playArea,boolean autoPlaceOnServerStart,LinkedHashMap<String,GymConfig> gyms,ChampionConfig champion,QualificationConfig qualification,VoucherConfig voucher) {
+    public record RuntimeConfig(PlayAreaConfig playArea,boolean suppressNaturalGymWorldgen,boolean autoPlaceOnServerStart,LinkedHashMap<String,GymConfig> gyms,ChampionConfig champion,QualificationConfig qualification,VoucherConfig voucher) {
         public static RuntimeConfig defaults(){
             LinkedHashMap<String,GymConfig> g=new LinkedHashMap<>();
             g.put("pewter",new GymConfig(true,"rgs:pewter_gym","minecraft:overworld",0,80,0,Rotation.NONE));
@@ -181,7 +182,7 @@ public final class ConfigManager {
             g.put("blackthorn",new GymConfig(true,"rgs:blackthorn_gym","minecraft:overworld",0,80,0,Rotation.NONE));
             g.put("league",new GymConfig(true,"rgs:kanto_league","minecraft:overworld",0,80,0,Rotation.NONE));
             return new RuntimeConfig(
-                new PlayAreaConfig("minecraft:overworld",0,0,3000),false,g,
+                new PlayAreaConfig("minecraft:overworld",0,0,3000),true,false,g,
                 new ChampionConfig(ChampionType.AI,"",new ArenaConfig("minecraft:overworld",new ArenaPoint(0,80,0,0,0),new ArenaPoint(8,80,0,180,0)),BattleFormat.DOUBLES,3600,true,ChallengerDisconnect.FORFEIT,ChampionDisconnect.REQUEUE),
                 new QualificationConfig(15,true), new VoucherConfig("Champion Challenge Voucher",true,true)
             );
