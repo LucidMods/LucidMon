@@ -63,6 +63,10 @@ public final class KantoMapGen {
             LucidMon.log(activationMessage + " Outside playable area is "
                     + MapGenConfigManager.current.kanto().outsidePlayableAreaMode() + " / "
                     + MapGenConfigManager.current.kanto().outsidePlayableAreaBiome() + ".");
+
+            // Layout v2 guarantees the small southwest starter settlement and the
+            // large central/Celadon BCA village exactly once per world.
+            KantoCityPlacer.schedule(server, world);
         } else if (presetActive) {
             activationMessage = "The Kanto world preset is active while mapType=STANDARD.";
             throw new IllegalStateException("LucidMon MapGen safety stop: " + activationMessage
