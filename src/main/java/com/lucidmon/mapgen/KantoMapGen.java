@@ -3,6 +3,7 @@ package com.lucidmon.mapgen;
 import com.lucidmon.core.LucidMon;
 import com.lucidmon.core.MapGenConfigManager;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
+import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -10,7 +11,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.storage.LevelResource;
-import net.minecraft.core.Registry;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -23,6 +23,7 @@ import java.util.HexFormat;
 public final class KantoMapGen {
     public static final ResourceLocation BIOME_SOURCE_ID = ResourceLocation.fromNamespaceAndPath("lucidmon", "kanto");
     public static final String WORLD_PRESET_ID = "lucidmon:kanto_archipelago";
+    public static final int PROFILE_LAYOUT_VERSION = 2;
     private static volatile boolean active;
     private static volatile String activationMessage = "Kanto world has not been loaded yet.";
 
@@ -31,7 +32,7 @@ public final class KantoMapGen {
     public static void register() {
         Registry.register(BuiltInRegistries.BIOME_SOURCE, BIOME_SOURCE_ID, KantoBiomeSource.CODEC);
         ServerWorldEvents.LOAD.register(KantoMapGen::onWorldLoad);
-        LucidMon.log("Registered KANTO_ARCHIPELAGO biome source/worldgen hooks.");
+        LucidMon.log("Registered KANTO_ARCHIPELAGO biome source/worldgen hooks (layout v" + PROFILE_LAYOUT_VERSION + ").");
     }
 
     private static void onWorldLoad(MinecraftServer server, ServerLevel world) {
@@ -47,7 +48,7 @@ public final class KantoMapGen {
             }
             if (!presetActive) {
                 activationMessage = "KANTO_ARCHIPELAGO requested, but the active Overworld is not using " + WORLD_PRESET_ID
-                        + ". Set level-type=" + WORLD_PRESET_ID + " before creating the world.";
+                        + ". Create a new singleplayer world with the LucidMon preset or set level-type=" + WORLD_PRESET_ID + " on a dedicated server before world creation.";
                 throw new IllegalStateException("LucidMon MapGen safety stop: " + activationMessage);
             }
 
@@ -58,14 +59,14 @@ public final class KantoMapGen {
                 world.getWorldBorder().setSize(cfg.playableDiameter());
             }
             active = true;
-            activationMessage = "KANTO_ARCHIPELAGO active and profile lock verified.";
+            activationMessage = "KANTO_ARCHIPELAGO layout v" + PROFILE_LAYOUT_VERSION + " active and profile lock verified.";
             LucidMon.log(activationMessage + " Outside playable area is "
                     + MapGenConfigManager.current.kanto().outsidePlayableAreaMode() + " / "
                     + MapGenConfigManager.current.kanto().outsidePlayableAreaBiome() + ".");
         } else if (presetActive) {
             activationMessage = "The Kanto world preset is active while mapType=STANDARD.";
             throw new IllegalStateException("LucidMon MapGen safety stop: " + activationMessage
-                    + " Either set mapType=KANTO_ARCHIPELAGO or restore a normal level-type before creating/loading this world.");
+                    + " Either set mapType=KANTO_ARCHIPELAGO or restore a normal world preset before creating/loading this world.");
         } else {
             active = false;
             activationMessage = "STANDARD active; LucidMon terrain shaping is disabled.";
@@ -77,12 +78,12 @@ public final class KantoMapGen {
             Path root = server.getWorldPath(LevelResource.ROOT);
             Path lock = root.resolve("lucidmon-mapgen.lock");
             String fingerprint = sha256(KantoLayout.current().fingerprintText(MapGenConfigManager.current.kanto()));
-            String expected = "profile=KANTO_ARCHIPELAGO\nversion=1\nfingerprint=" + fingerprint + "\n";
+            String expected = "profile=KANTO_ARCHIPELAGO\nversion=" + PROFILE_LAYOUT_VERSION + "\nfingerprint=" + fingerprint + "\n";
             if (Files.exists(lock)) {
                 String existing = Files.readString(lock, StandardCharsets.UTF_8);
                 if (!existing.equals(expected)) {
-                    throw new IllegalStateException("LucidMon MapGen profile lock differs from the current config. Refusing to mix generators/layouts in an existing world. "
-                            + "Restore the matching config or create a new world. Lock: " + lock);
+                    throw new IllegalStateException("LucidMon MapGen profile lock differs from the current config/layout version. Refusing to mix generators/layouts in an existing world. "
+                            + "Restore the matching build/config or create a new world. Lock: " + lock);
                 }
             } else {
                 Files.writeString(lock, expected, StandardCharsets.UTF_8);
