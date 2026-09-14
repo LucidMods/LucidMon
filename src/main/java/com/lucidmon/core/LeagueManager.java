@@ -5,7 +5,7 @@ import com.lucidmon.mapgen.KantoMapGen;
 import java.util.*;
 
 /**
- * Unstable-4 server control surface.
+ * Unstable-5 server control surface.
  * Gym placement/config commands and Kanto MapGen controls are active. Champion
  * queue/battle integration remains guarded until the exact RCT battle hooks are integrated.
  */
@@ -47,7 +47,7 @@ public final class LeagueManager {
         if(g==null){CommandBridge.feedback(src,"Unknown gym id '"+id+"'. Valid: "+ConfigManager.current.gyms().keySet(),"red");return 0;}
         if(!g.enabled()){CommandBridge.feedback(src,"Gym '"+id+"' is disabled in config.","yellow");return 0;}
         if(g.x()==0&&g.y()==80&&g.z()==0){CommandBridge.feedback(src,"Refusing to place '"+id+"' at the untouched default 0 80 0. Configure coordinates first.","red");return 0;}
-        if(g.rotation()!=ConfigManager.Rotation.NONE) CommandBridge.feedback(src,"UNSTABLE.4 note: RGS /place structure does not apply configured rotation yet; placing with NONE orientation.","yellow");
+        if(g.rotation()!=ConfigManager.Rotation.NONE) CommandBridge.feedback(src,"UNSTABLE.5 note: RGS /place structure does not apply configured rotation yet; placing with NONE orientation.","yellow");
         String cmd="execute in "+g.dimension()+" run place structure "+g.structure()+" "+g.x()+" "+g.y()+" "+g.z();
         int result=CommandBridge.execute(cmd,src);
         if(result>0)CommandBridge.feedback(src,"Placed "+id+" at "+g.x()+" "+g.y()+" "+g.z()+".","green");
@@ -102,7 +102,7 @@ public final class LeagueManager {
             CommandBridge.feedback(src,"Biome audit requires an active KANTO_ARCHIPELAGO world.","yellow");
             return 0;
         }
-        CommandBridge.feedback(src,"Kanto generator is active. Full 53-biome generated-world audit scanning is not yet implemented in unstable.4; use this build for terrain/layout verification first.","yellow");
+        CommandBridge.feedback(src,"Kanto generator is active. Full 53-biome generated-world audit scanning is not yet implemented in unstable.5; use this build for terrain/layout verification first.","yellow");
         return 0;
     }
 
@@ -114,7 +114,7 @@ public final class LeagueManager {
     public static int cmdSoulpackDebug(Object ctx,Object src){return forward(src,"function soulpack:debug_state","Soulpack debug requested.");}
     private static int forward(Object src,String command,String ok){int r=CommandBridge.execute(command,src);if(r>0)CommandBridge.feedback(src,ok,"green");return r;}
 
-    private static int championPending(Object src){CommandBridge.feedback(src,"Player Champion queue/battle integration is not enabled in v0.1.2-unstable.4. The JSON5 section remains parsed for forward compatibility.","yellow");return 0;}
+    private static int championPending(Object src){CommandBridge.feedback(src,"Player Champion queue/battle integration is not enabled in v0.1.2-unstable.5. The JSON5 section remains parsed for forward compatibility.","yellow");return 0;}
     public static int cmdQueue(Object c,Object s){return championPending(s);} public static int cmdQualifiers(Object c,Object s){return championPending(s);}
     public static int cmdChampionReady(Object c,Object s){return championPending(s);} public static int cmdChampionResult(Object c,Object s){return championPending(s);}
     public static int cmdChallengeInfo(Object c,Object s){return championPending(s);} public static int cmdChallengeCancel(Object c,Object s){return championPending(s);}
