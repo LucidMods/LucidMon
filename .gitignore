@@ -1,0 +1,14 @@
+.gradle/
+build/
+out/
+run/
+.idea/
+*.iml
+.vscode/
+.DS_Store
+*.log
+crash-reports/
+logs/
+world/
+world_nether/
+world_the_end/
