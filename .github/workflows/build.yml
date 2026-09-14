@@ -6,23 +6,33 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
+
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
+
       - name: Verify rollback artifacts
         run: python3 tools/verify_reference.py
+
       - name: Build LucidMon
         run: gradle build --stacktrace
+
       - uses: actions/upload-artifact@v4
+        if: success()
         with:
           name: LucidMon-build
           path: build/libs/*.jar
+          if-no-files-found: error
