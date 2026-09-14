@@ -1,6 +1,7 @@
 package com.lucidmon.mapgen;
 
 import com.lucidmon.core.LucidMon;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
@@ -65,13 +66,22 @@ public final class KantoCityPlacer {
             server.getCommands().performPrefixedCommand(source,
                     "place structure " + CENTRAL_CITY + " " + central.x() + " " + centralY + " " + central.z());
 
+            // New players should begin at the small southwest settlement rather
+            // than at the vanilla near-origin spawn (which is now central Celadon).
+            // Re-read height after structure placement so spawn sits on the built city.
+            int spawnX = starter.x() + 24;
+            int spawnZ = starter.z() + 24;
+            int spawnY = world.getHeight(Heightmap.Types.WORLD_SURFACE, spawnX, spawnZ);
+            world.setDefaultSpawnPos(new BlockPos(spawnX, spawnY, spawnZ), 0.0F);
+
             String text = "layout=2\n"
                     + "starter=" + STARTER_CITY + "@" + starter.x() + "," + starterY + "," + starter.z() + "\n"
-                    + "central=" + CENTRAL_CITY + "@" + central.x() + "," + centralY + "," + central.z() + "\n";
+                    + "central=" + CENTRAL_CITY + "@" + central.x() + "," + centralY + "," + central.z() + "\n"
+                    + "spawn=" + spawnX + "," + spawnY + "," + spawnZ + "\n";
             Files.writeString(marker, text, StandardCharsets.UTF_8);
             LucidMon.log("Placed Kanto layout-v2 city anchors: starter " + STARTER_CITY + " at "
                     + starter.x() + "," + starterY + "," + starter.z() + "; central/Celadon " + CENTRAL_CITY + " at "
-                    + central.x() + "," + centralY + "," + central.z() + ".");
+                    + central.x() + "," + centralY + "," + central.z() + ". World spawn moved to the starter city.");
         } catch (Throwable t) {
             // City placement must never make an otherwise valid world unloadable.
             // Without the marker the next load can retry after the underlying issue is fixed.
