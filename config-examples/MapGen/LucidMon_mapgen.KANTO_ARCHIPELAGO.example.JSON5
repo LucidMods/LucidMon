@@ -1,0 +1,696 @@
+{
+  // ==========================================================================
+  // LucidMon MapGen
+  // File: /config/LucidMon/MapGen/LucidMon_mapgen.JSON5
+  //
+  // IMPORTANT:
+  // - The selected map profile is locked to a world when that world is created.
+  // - Changing mapType later does NOT rewrite already-generated chunks.
+  // - Invalid enum values fall back to STANDARD.
+  // - STANDARD makes no LucidMon terrain/world-generation changes.
+  // ==========================================================================
+
+  // Valid values:
+  //   "STANDARD"           = normal Minecraft/modded world generation.
+  //   "KANTO_ARCHIPELAGO" = LucidMon's verified 6000x6000 Kanto-inspired map.
+  //
+  // Invalid value -> "STANDARD"
+  mapType: "KANTO_ARCHIPELAGO",
+
+  // Stores the selected map profile in the world save and prevents accidental
+  // generator mixing if the config is changed after the world already exists.
+  lockProfileOnWorldCreation: true,
+
+  kantoArchipelago: {
+    centerX: 0,
+    centerZ: 0,
+
+    // 6000 blocks wide = 3000 blocks from center to each edge.
+    playableDiameter: 6000,
+
+    // Optional matching border applied when the profile initializes.
+    setWorldBorder: true,
+
+    // The large-scale island arrangement remains recognizable between seeds.
+    // The seed still changes local terrain, caves, coast roughness, ores,
+    // vegetation and smaller terrain details.
+    preserveMacroLayoutAcrossSeeds: true,
+
+    // Deep-water buffer around the tournament area.
+    oceanBufferBlocks: 256,
+
+    // ========================================================================
+    // BIOME COVERAGE
+    //
+    // KANTO_ARCHIPELAGO is designed to contain every vanilla Minecraft 1.21.1
+    // Overworld biome somewhere inside the playable 6000x6000 region.
+    //
+    // This matters for Cobblemon because biome-based spawn rules need a real,
+    // sufficiently large biome area rather than a one-chunk token patch.
+    // ========================================================================
+    biomeCoverage: {
+      enabled: true,
+
+      // Valid values:
+      //   "ALL_VANILLA_OVERWORLD" = guarantee all 53 vanilla 1.21.1 Overworld
+      //                             biome IDs are represented.
+      //   "REGIONAL"              = use the macro regions below but do not fail
+      //                             validation if a rare biome is absent.
+      //
+      // Invalid value -> "ALL_VANILLA_OVERWORLD"
+      policy: "ALL_VANILLA_OVERWORLD",
+
+      // Minimum intended contiguous footprint for ordinary surface biomes.
+      // Rare transition biomes may be narrower, but LucidMon should target at
+      // least this diameter whenever terrain allows it.
+      minimumSurfaceBiomeDiameter: 192,
+
+      // Ocean variants need enough room to expose their water-column habitats.
+      minimumOceanBiomeDiameter: 256,
+
+      // Cave biomes are generated as meaningful underground volumes instead
+      // of tiny isolated cells.
+      minimumCaveBiomeDiameter: 192,
+
+      // If enabled, profile validation reports a missing required biome and the
+      // profile remains UNVERIFIED until the map is corrected.
+      failProfileVerificationIfBiomeMissing: true,
+
+      // Full required vanilla Minecraft 1.21.1 Overworld biome manifest.
+      requiredBiomes: [
+        "minecraft:badlands",
+        "minecraft:bamboo_jungle",
+        "minecraft:beach",
+        "minecraft:birch_forest",
+        "minecraft:cherry_grove",
+        "minecraft:cold_ocean",
+        "minecraft:dark_forest",
+        "minecraft:deep_cold_ocean",
+        "minecraft:deep_dark",
+        "minecraft:deep_frozen_ocean",
+        "minecraft:deep_lukewarm_ocean",
+        "minecraft:deep_ocean",
+        "minecraft:desert",
+        "minecraft:dripstone_caves",
+        "minecraft:eroded_badlands",
+        "minecraft:flower_forest",
+        "minecraft:forest",
+        "minecraft:frozen_ocean",
+        "minecraft:frozen_peaks",
+        "minecraft:frozen_river",
+        "minecraft:grove",
+        "minecraft:ice_spikes",
+        "minecraft:jagged_peaks",
+        "minecraft:jungle",
+        "minecraft:lukewarm_ocean",
+        "minecraft:lush_caves",
+        "minecraft:mangrove_swamp",
+        "minecraft:meadow",
+        "minecraft:mushroom_fields",
+        "minecraft:ocean",
+        "minecraft:old_growth_birch_forest",
+        "minecraft:old_growth_pine_taiga",
+        "minecraft:old_growth_spruce_taiga",
+        "minecraft:plains",
+        "minecraft:river",
+        "minecraft:savanna",
+        "minecraft:savanna_plateau",
+        "minecraft:snowy_beach",
+        "minecraft:snowy_plains",
+        "minecraft:snowy_slopes",
+        "minecraft:snowy_taiga",
+        "minecraft:sparse_jungle",
+        "minecraft:stony_peaks",
+        "minecraft:stony_shore",
+        "minecraft:sunflower_plains",
+        "minecraft:swamp",
+        "minecraft:taiga",
+        "minecraft:warm_ocean",
+        "minecraft:windswept_forest",
+        "minecraft:windswept_gravelly_hills",
+        "minecraft:windswept_hills",
+        "minecraft:windswept_savanna",
+        "minecraft:wooded_badlands"
+      ],
+
+      // Macro ecological regions. Exact biome boundaries remain organic and
+      // seed-varied, while these anchors guarantee sensible placement.
+      regions: {
+        // Snowy northern crown: high mountains and polar coast.
+        northSnowCrown: {
+          centerX: 0,
+          centerZ: -2150,
+          radius: 1050,
+          biomes: [
+            "minecraft:snowy_plains",
+            "minecraft:snowy_taiga",
+            "minecraft:grove",
+            "minecraft:snowy_slopes",
+            "minecraft:jagged_peaks",
+            "minecraft:frozen_peaks",
+            "minecraft:ice_spikes",
+            "minecraft:frozen_river",
+            "minecraft:snowy_beach",
+            "minecraft:frozen_ocean",
+            "minecraft:deep_frozen_ocean"
+          ]
+        },
+
+        // Northwestern rough uplands / taiga transition.
+        northwestHighlands: {
+          centerX: -1550,
+          centerZ: -1200,
+          radius: 850,
+          biomes: [
+            "minecraft:taiga",
+            "minecraft:old_growth_pine_taiga",
+            "minecraft:old_growth_spruce_taiga",
+            "minecraft:windswept_hills",
+            "minecraft:windswept_gravelly_hills",
+            "minecraft:windswept_forest",
+            "minecraft:stony_peaks"
+          ]
+        },
+
+        // Temperate heartland for major cities and routes.
+        centralTemperate: {
+          centerX: -100,
+          centerZ: -100,
+          radius: 1400,
+          biomes: [
+            "minecraft:plains",
+            "minecraft:sunflower_plains",
+            "minecraft:forest",
+            "minecraft:flower_forest",
+            "minecraft:birch_forest",
+            "minecraft:old_growth_birch_forest",
+            "minecraft:dark_forest",
+            "minecraft:meadow",
+            "minecraft:cherry_grove",
+            "minecraft:river",
+            "minecraft:beach",
+            "minecraft:stony_shore"
+          ]
+        },
+
+        // Eastern dry chain: savanna, desert and badlands islands/peninsulas.
+        eastDrylands: {
+          centerX: 1750,
+          centerZ: 350,
+          radius: 850,
+          biomes: [
+            "minecraft:savanna",
+            "minecraft:savanna_plateau",
+            "minecraft:windswept_savanna",
+            "minecraft:desert",
+            "minecraft:badlands",
+            "minecraft:eroded_badlands",
+            "minecraft:wooded_badlands"
+          ]
+        },
+
+        // Southeastern tropical island chain.
+        southeastJungleChain: {
+          centerX: 1750,
+          centerZ: 1750,
+          radius: 900,
+          biomes: [
+            "minecraft:jungle",
+            "minecraft:sparse_jungle",
+            "minecraft:bamboo_jungle",
+            "minecraft:warm_ocean",
+            "minecraft:lukewarm_ocean",
+            "minecraft:deep_lukewarm_ocean",
+            "minecraft:beach"
+          ]
+        },
+
+        // Southwestern wetlands and mangrove delta.
+        southwestWetlands: {
+          centerX: -1700,
+          centerZ: 1350,
+          radius: 750,
+          biomes: [
+            "minecraft:swamp",
+            "minecraft:mangrove_swamp",
+            "minecraft:river",
+            "minecraft:lukewarm_ocean",
+            "minecraft:beach"
+          ]
+        },
+
+        // Rare mushroom island kept offshore so its biome remains distinct.
+        mushroomIsland: {
+          centerX: 2350,
+          centerZ: -250,
+          radius: 260,
+          biomes: [
+            "minecraft:mushroom_fields"
+          ]
+        },
+
+        // General ocean ring and shelves between island groups.
+        oceanNetwork: {
+          biomes: [
+            "minecraft:ocean",
+            "minecraft:deep_ocean",
+            "minecraft:cold_ocean",
+            "minecraft:deep_cold_ocean",
+            "minecraft:lukewarm_ocean",
+            "minecraft:deep_lukewarm_ocean",
+            "minecraft:warm_ocean",
+            "minecraft:frozen_ocean",
+            "minecraft:deep_frozen_ocean"
+          ]
+        },
+
+        // Underground coverage is layered beneath suitable surface regions.
+        underground: {
+          biomes: [
+            "minecraft:lush_caves",
+            "minecraft:dripstone_caves",
+            "minecraft:deep_dark"
+          ],
+
+          // Suggested placement:
+          // - lush caves under jungles/temperate uplands
+          // - dripstone caves under drylands/volcanic and stony regions
+          // - deep dark beneath the northern/highland mountain mass
+          deepDarkPreferredUnderNorthMountains: true
+        }
+      }
+    },
+
+
+    // ========================================================================
+    // ROUTES / ROADS
+    //
+    // Routes are generated as a graph between named landmarks rather than as
+    // random roads. This keeps the region navigable and lets towns, caves,
+    // forests, bridges and ports connect together in a predictable way.
+    //
+    // The generator may bend a route around terrain, water and cliffs, but it
+    // must keep the configured start/end nodes connected.
+    // ========================================================================
+    routes: {
+      enabled: true,
+
+      // Valid values:
+      //   "NATURAL"  = dirt/coarse dirt/gravel/path blocks; blends into terrain.
+      //   "BUILT"    = more formal roads near cities with lamps/curbs/bridges.
+      //   "MIXED"    = NATURAL between settlements, BUILT near major towns.
+      //
+      // Invalid value -> "MIXED"
+      style: "MIXED",
+
+      // Width of ordinary overland routes.
+      defaultWidth: 5,
+
+      // Wider approaches around major settlements.
+      cityApproachWidth: 9,
+
+      // Keeps vegetation from immediately blocking roads.
+      clearVegetationRadius: 3,
+
+      // Roads try not to exceed this slope. When terrain is steeper the
+      // generator uses switchbacks, stairs, a bridge or a tunnel.
+      maxNaturalSlopeDegrees: 24,
+
+      // Automatically build short bridges across rivers and narrow channels.
+      allowBridges: true,
+
+      // Long ocean gaps are NOT filled with giant causeways by default.
+      // Island chains use docks/ferry points or natural stepping-stone islands.
+      allowLongOceanCauseways: false,
+
+      // Optional route-number signs / landmark signs.
+      placeRouteSigns: true,
+
+      // Main route graph. Coordinates are macro anchors; the generator creates
+      // an organic path between them and may offset locally for terrain.
+      network: {
+        // Southern starting-city connection into the main region.
+        route01: {
+          from: "starting_city",
+          to: "central_metro",
+          travelType: "LAND"
+        },
+
+        // West/northwest route toward Mt. Moon's eastern side.
+        route02: {
+          from: "central_metro",
+          to: "mt_moon_east_entrance",
+          travelType: "LAND"
+        },
+
+        // Mt. Moon itself provides the connection between route02 and route03.
+        route03: {
+          from: "mt_moon_west_exit",
+          to: "northwest_highlands",
+          travelType: "LAND"
+        },
+
+        // Northern route toward the snow crown.
+        route04: {
+          from: "northwest_highlands",
+          to: "north_lake_district",
+          travelType: "LAND"
+        },
+
+        route05: {
+          from: "north_lake_district",
+          to: "north_snow_crown",
+          travelType: "MOUNTAIN"
+        },
+
+        // Central/west city connector.
+        route06: {
+          from: "central_metro",
+          to: "west_metro",
+          travelType: "LAND"
+        },
+
+        // West/south route through forest and park terrain.
+        route07: {
+          from: "west_metro",
+          to: "southwest_park",
+          travelType: "FOREST"
+        },
+
+        // Wetlands route uses raised boardwalk sections where needed.
+        route08: {
+          from: "southwest_park",
+          to: "southwest_wetlands",
+          travelType: "WETLAND"
+        },
+
+        // Eastern route toward drier terrain.
+        route09: {
+          from: "central_metro",
+          to: "east_drylands",
+          travelType: "LAND"
+        },
+
+        // Southeast route toward port / tropical chain.
+        route10: {
+          from: "central_metro",
+          to: "southeast_port",
+          travelType: "LAND"
+        },
+
+        // Sea route represented by docks and optional stepping islands rather
+        // than a road laid across the entire ocean.
+        route11: {
+          from: "southeast_port",
+          to: "southeast_jungle_chain",
+          travelType: "SEA"
+        },
+
+        // Southern sea connection to the volcanic island.
+        route12: {
+          from: "starting_city",
+          to: "volcano_island_town",
+          travelType: "SEA"
+        },
+
+        // League approach.
+        route13: {
+          from: "west_metro",
+          to: "victory_road_south_entrance",
+          travelType: "LAND"
+        },
+
+        // Victory Road itself supplies the internal connection.
+        route14: {
+          from: "victory_road_north_exit",
+          to: "league_plateau",
+          travelType: "MOUNTAIN"
+        }
+      }
+    },
+
+    // ========================================================================
+    // IMPORTANT LOCATIONS
+    //
+    // These are large-scale terrain landmarks/dungeons, not gyms.
+    // Gym coordinates remain under LucidMon's League configuration so you can
+    // inspect the generated world and place each gym manually.
+    // ========================================================================
+    importantLocations: {
+      // ----------------------------------------------------------------------
+      // MT. MOON
+      //
+      // A real mountain mass with two route-facing entrances. The cave system
+      // is guaranteed to connect the EAST entrance to the WEST exit.
+      // ----------------------------------------------------------------------
+      mtMoon: {
+        enabled: true,
+
+        centerX: -950,
+        centerZ: -950,
+
+        radiusX: 520,
+        radiusZ: 460,
+        peakY: 185,
+
+        // The entrances are deliberately on opposite sides of the mountain so
+        // players actually traverse the dungeon rather than enter/exit beside
+        // the same route.
+        eastEntrance: {
+          nodeId: "mt_moon_east_entrance",
+          x: -500,
+          z: -900,
+          y: "AUTO"
+        },
+
+        westExit: {
+          nodeId: "mt_moon_west_exit",
+          x: -1400,
+          z: -1000,
+          y: "AUTO"
+        },
+
+        // Internal cave-generation controls.
+        cave: {
+          guaranteeEntranceToExitPath: true,
+
+          // Primary path is traversable without mining through walls.
+          mainPathMinimumWidth: 4,
+          mainPathMinimumHeight: 4,
+
+          // Side caves add exploration and Cobblemon cave habitat.
+          sideCaveCountMin: 6,
+          sideCaveCountMax: 14,
+
+          // Lush/dripstone pockets may be blended into side chambers while the
+          // main mountain retains a rocky cave identity.
+          allowBiomePockets: true,
+
+          // Optional small upper opening for natural light; never substitutes
+          // for the route entrance/exit.
+          allowSkylightChambers: true
+        }
+      },
+
+      // A large northern forest route landmark.
+      viridianForest: {
+        enabled: true,
+        centerX: -1250,
+        centerZ: 500,
+        radius: 420,
+        biomeBias: [
+          "minecraft:forest",
+          "minecraft:flower_forest",
+          "minecraft:old_growth_birch_forest"
+        ],
+        routePathThroughForest: true
+      },
+
+      // Rocky eastern tunnel through high terrain; useful for cave Pokémon and
+      // as a second major overland dungeon.
+      rockTunnel: {
+        enabled: true,
+        centerX: 1250,
+        centerZ: -800,
+        radiusX: 420,
+        radiusZ: 360,
+        westEntranceNode: "rock_tunnel_west",
+        eastExitNode: "rock_tunnel_east",
+        guaranteeEntranceToExitPath: true
+      },
+
+      // Optional industrial landmark site. The first MapGen version prepares
+      // terrain and access road but does not require a specific building NBT.
+      powerPlantSite: {
+        enabled: true,
+        x: 1850,
+        z: -450,
+        flatRadius: 150,
+        nearRiverOrReservoir: true,
+        routeNodeId: "power_plant"
+      },
+
+      // Fuchsia-like nature preserve / Safari-style build area.
+      safariPreserve: {
+        enabled: true,
+        centerX: -950,
+        centerZ: 1050,
+        radius: 520,
+        routeNodeId: "southwest_park",
+        biomeMix: [
+          "minecraft:plains",
+          "minecraft:forest",
+          "minecraft:swamp",
+          "minecraft:bamboo_jungle"
+        ]
+      },
+
+      // Island cave complex in the southern/southwestern sea.
+      seafoamIslands: {
+        enabled: true,
+        centerX: -1750,
+        centerZ: 2200,
+        islandCountMin: 2,
+        islandCountMax: 4,
+        caveNetwork: true,
+        coldCavePockets: true,
+        routeUsesBoatOrFerry: true
+      },
+
+      // Route-controlled final mountain dungeon before the League.
+      victoryRoad: {
+        enabled: true,
+        centerX: -2200,
+        centerZ: -700,
+        radiusX: 480,
+        radiusZ: 620,
+        peakY: 195,
+
+        southEntrance: {
+          nodeId: "victory_road_south_entrance",
+          x: -2050,
+          z: -250,
+          y: "AUTO"
+        },
+
+        northExit: {
+          nodeId: "victory_road_north_exit",
+          x: -2250,
+          z: -1150,
+          y: "AUTO"
+        },
+
+        guaranteeEntranceToExitPath: true,
+        connectExitToLeaguePlateau: true
+      }
+    },
+
+    // Named nodes used by the route graph. These keep route definitions readable
+    // and make it easier to move a whole landmark later without rewriting every
+    // connected road.
+    routeNodes: {
+      starting_city:          { x: 250,   z: 1050 },
+      central_metro:          { x: -100,  z: -100 },
+      west_metro:             { x: -1050, z: -150 },
+      northwest_highlands:    { x: -1650, z: -1250 },
+      north_lake_district:    { x: 250,   z: -1650 },
+      north_snow_crown:       { x: 0,     z: -2300 },
+      southwest_park:         { x: -1050, z: 1150 },
+      southwest_wetlands:     { x: -1700, z: 1350 },
+      east_drylands:          { x: 1750,  z: 350 },
+      southeast_port:         { x: 950,   z: 900 },
+      southeast_jungle_chain: { x: 1750,  z: 1750 },
+      volcano_island_town:    { x: -650,  z: 2525 },
+      league_plateau:         { x: -2200, z: -850 },
+
+      // Dungeon entrance/exit nodes are duplicated here for route planning.
+      mt_moon_east_entrance:       { x: -500,  z: -900 },
+      mt_moon_west_exit:           { x: -1400, z: -1000 },
+      rock_tunnel_west:            { x: 900,    z: -800 },
+      rock_tunnel_east:            { x: 1550,   z: -800 },
+      power_plant:                 { x: 1850,   z: -450 },
+      victory_road_south_entrance: { x: -2050, z: -250 },
+      victory_road_north_exit:     { x: -2250, z: -1150 }
+    },
+
+    startingCity: {
+      enabled: true,
+
+      // Exact BCA ID is runtime-validated so an upstream rename cannot crash
+      // world creation.
+      structureId: "bca:default_city_large",
+
+      // South-central portion of the main island.
+      x: 250,
+      z: 1050,
+      y: "AUTO",
+
+      // Valid values:
+      //   "NONE"
+      //   "CLOCKWISE_90"
+      //   "CLOCKWISE_180"
+      //   "COUNTERCLOCKWISE_90"
+      // Invalid value -> "NONE"
+      rotation: "NONE",
+
+      foundationRadius: 240,
+      suppressNaturalCopies: true
+    },
+
+    volcanoIsland: {
+      enabled: true,
+
+      centerX: -1050,
+      centerZ: 2350,
+
+      radiusX: 620,
+      radiusZ: 520,
+
+      peakY: 205,
+      craterRadius: 95,
+      craterDepth: 42,
+      lavaInCrater: true,
+
+      // Mixes rocky/volcanic terrain with a viable coastal build zone.
+      preferredSurfaceBiomes: [
+        "minecraft:stony_peaks",
+        "minecraft:stony_shore",
+        "minecraft:plains"
+      ],
+
+      townSite: {
+        x: -650,
+        z: 2525,
+        radius: 170,
+
+        // Reserved for a later verified small-town structure ID.
+        autoPlaceTownStructure: false,
+        structureId: ""
+      }
+    },
+
+    // Build-friendly terrain zones. These do NOT place gyms.
+    landmarkZones: {
+      northwestHighlands: { x: -1650, z: -1250, flatRadius: 150 },
+      northLakeDistrict:  { x:  250,  z: -1650, flatRadius: 180 },
+      centralMetro:       { x: -100,  z:  -100, flatRadius: 260 },
+      westMetro:          { x: -1050, z:  -150, flatRadius: 220 },
+      southeastPort:      { x:  950,  z:   900, flatRadius: 200 },
+      southwestPark:      { x: -1050, z:  1150, flatRadius: 180 },
+      northeastHighlands: { x:  1650, z: -1250, flatRadius: 160 },
+      leaguePlateau:      { x: -2200, z:  -850, flatRadius: 180 }
+    },
+
+    // Profile verification is intended to be run before a map profile is marked
+    // human-verified/release-ready.
+    verification: {
+      // Planned admin command:
+      // /lucidmon mapgen audit-biomes
+      //
+      // The audit scans surface, ocean and underground sample layers and reports
+      // every required biome as FOUND or MISSING.
+      requireHumanApproval: true,
+      requiredBiomeCount: 53
+    }
+  }
+}

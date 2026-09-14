@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "id": "lucidmon",
+  "version": "${version}",
+  "name": "LucidMon",
+  "description": "UNSTABLE LucidMon Cobblemon tournament framework: core config, MapGen pre-flight/profile configuration, manual RGS gym placement scaffold, Map Reveal, Soulpack, and Cobblemon 1.8-compatible Virtual Pasture.",
+  "authors": [
+    "LucidMon"
+  ],
+  "license": "MIT",
+  "icon": "icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.lucidmon.core.LucidMon",
+      "com.lunazstudios.virtualloot.fabric.VirtualLootFabric"
+    ],
+    "client": [
+      "com.lunazstudios.virtualloot.fabric.client.VirtualLootFabricClient"
+    ]
+  },
+  "mixins": [
+    "virtualloot.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "architectury": ">=13.0.8",
+    "fabric-api": "*",
+    "cobblemon": ">=1.8.0 <1.9.0",
+    "rctapi": "*",
+    "rctmod": "*",
+    "rgs": "*",
+    "sophisticatedbackpacks": "*",
+    "sophisticatedcore": "*",
+    "cobblefurnies": "*"
+  },
+  "recommends": {
+    "cobbleworkers": ">=2.0.5",
+    "cobbreeding": ">=2.3.0",
+    "waystones": "*"
+  }
+}

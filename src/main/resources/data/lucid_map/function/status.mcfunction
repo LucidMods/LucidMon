@@ -1,0 +1,3 @@
+tellraw @s [{"text":"[LucidMap] running=","color":"aqua"},{"score":{"name":"#running","objective":"lucid_map"}},{"text":" visited="},{"score":{"name":"#visited","objective":"lucid_map"}},{"text":"/"},{"score":{"name":"#points","objective":"lucid_map"}}]
+tellraw @s [{"text":"[LucidMap] row=","color":"aqua"},{"score":{"name":"#row","objective":"lucid_map"}},{"text":" col="},{"score":{"name":"#col","objective":"lucid_map"}},{"text":" dir="},{"score":{"name":"#dir","objective":"lucid_map"}}]
+tellraw @s [{"text":"[LucidMap] current X/Z = ","color":"aqua"},{"score":{"name":"#x","objective":"lucid_map"}},{"text":" / "},{"score":{"name":"#z","objective":"lucid_map"}}]

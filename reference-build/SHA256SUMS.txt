@@ -1,0 +1,3 @@
+3e59aa30c0fa136b03a417d5f148b32badc52bac15be5b98f46e1415954601bc reference-build/v0.1.1-unstable.2/LucidMon-0.1.1-unstable.2-mapgen-preflight.jar
+4f726f1fd971918168826190d8c1fd71e3e1408111a25e1cc277352df3cffbf3 reference-build/v0.1.1-unstable.2/LucidMon-Server-PreMapGen-Configs-v0.1.1-unstable.2.zip
+efc25adffa5a2ed97d6f7bcb655aae8027ea6297f1c918bc39af0845a68b0d55 vendor/virtualloot-0.3-lucid-cobblemon1.8-test3-patched.jar

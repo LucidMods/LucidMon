@@ -1,0 +1,197 @@
+{
+  // ========================================================================
+  // LucidMon Core configuration
+  // File created automatically at: config/LucidMon/LucidMon_core.JSON5
+  //
+  // LucidMon never overwrites this file after it has been created.
+  // Invalid individual values are logged and replaced in memory with the
+  // documented safe default. A typo in one field does NOT reset this file.
+  // ========================================================================
+
+  playArea: {
+    // Informational center/radius for your chosen tournament map.
+    // These values do not generate terrain and do not force a world border.
+    dimension: "minecraft:overworld", // Invalid resource ID -> minecraft:overworld
+    centerX: 0,                         // Invalid number -> 0
+    centerZ: 0,                         // Invalid number -> 0
+    radius: 3000                        // Must be >= 256. Invalid -> 3000
+  },
+
+  gyms: {
+    // RGS natural gym/League world generation is disabled by LucidMon.
+    // These exact templates are placed only where you configure them.
+    //
+    // false (recommended default): place with /lucidmon gyms place after
+    //                               choosing and validating all coordinates.
+    // true: LucidMon attempts to place all enabled, unplaced templates after
+    //       the server has loaded the world.
+    autoPlaceOnServerStart: false,
+
+    // Rotation enum values for every entry below:
+    //   "NONE"
+    //   "CLOCKWISE_90"
+    //   "CLOCKWISE_180"
+    //   "COUNTERCLOCKWISE_90"
+    // Invalid rotation -> "NONE"
+    //
+    // enabled=false means LucidMon will not manually place that entry.
+    // structure should normally be left at the supplied RGS ID.
+
+    pewter: {
+      enabled: true,
+      structure: "rgs:pewter_gym",
+      dimension: "minecraft:overworld",
+      x: 0, y: 80, z: 0,
+      rotation: "NONE"
+    },
+
+    cerulean: {
+      enabled: true,
+      structure: "rgs:cerulean_gym",
+      dimension: "minecraft:overworld",
+      x: 0, y: 80, z: 0,
+      rotation: "NONE"
+    },
+
+    vermilion: {
+      enabled: true,
+      structure: "rgs:vermilion_gym",
+      dimension: "minecraft:overworld",
+      x: 0, y: 80, z: 0,
+      rotation: "NONE"
+    },
+
+    celadon: {
+      enabled: true,
+      structure: "rgs:celadon_gym",
+      dimension: "minecraft:overworld",
+      x: 0, y: 80, z: 0,
+      rotation: "NONE"
+    },
+
+    fuchsia: {
+      enabled: true,
+      structure: "rgs:fuchsia_gym",
+      dimension: "minecraft:overworld",
+      x: 0, y: 80, z: 0,
+      rotation: "NONE"
+    },
+
+    saffron: {
+      enabled: true,
+      structure: "rgs:saffron_gym",
+      dimension: "minecraft:overworld",
+      x: 0, y: 80, z: 0,
+      rotation: "NONE"
+    },
+
+    cinnabar: {
+      enabled: true,
+      structure: "rgs:cinnabar_gym",
+      dimension: "minecraft:overworld",
+      x: 0, y: 80, z: 0,
+      rotation: "NONE"
+    },
+
+    blackthorn: {
+      enabled: true,
+      structure: "rgs:blackthorn_gym",
+      dimension: "minecraft:overworld",
+      x: 0, y: 80, z: 0,
+      rotation: "NONE"
+    },
+
+    league: {
+      enabled: true,
+      structure: "rgs:kanto_league",
+      dimension: "minecraft:overworld",
+      x: 0, y: 80, z: 0,
+      rotation: "NONE"
+    }
+  },
+
+  champion: {
+    // Champion type enum values:
+    //   "AI"     = Keep the original RCT/Radical Red AI Champion (Blue).
+    //              Champion Voucher / Player Champion matchmaking is disabled.
+    //   "PLAYER" = Use the configured real player as Champion. The original
+    //              AI Champion Blue is suppressed so he cannot bypass the
+    //              Player Champion progression.
+    //
+    // Invalid champion type -> "AI" (safe fallback preserving normal RCT).
+    type: "AI",
+
+    // Used only when type="PLAYER".
+    // LucidMon resolves this name to a UUID and persists that UUID so a later
+    // username change does not destroy pending claims. Blank/unresolvable name
+    // leaves Player Champion matchmaking unavailable; LucidMon never silently
+    // selects somebody else.
+    playerName: "",
+
+    arena: {
+      // Both players are teleported here only after the match is ready.
+      dimension: "minecraft:overworld",
+
+      challenger: {
+        x: 0, y: 80, z: 0,
+        yaw: 0.0, pitch: 0.0
+      },
+
+      champion: {
+        x: 8, y: 80, z: 0,
+        yaw: 180.0, pitch: 0.0
+      }
+    },
+
+    // Battle format enum values:
+    //   "SINGLES"
+    //   "DOUBLES"
+    // Invalid -> "DOUBLES"
+    battleFormat: "DOUBLES",
+
+    // A challenger who loses receives another voucher immediately but cannot
+    // submit a new claim until this real-time cooldown expires.
+    // 3600 seconds = 1 hour. Negative/invalid -> 3600.
+    retryCooldownSeconds: 3600,
+
+    // true: Champion and challenger must each click/type
+    //       /lucidmon champion ready before arena teleport.
+    // false: an available pair starts automatically.
+    requireReadyConfirmation: true,
+
+    // Challenger disconnect behavior enum values:
+    //   "FORFEIT" = active challenger disconnect counts as a loss; cooldown.
+    //   "REQUEUE" = no-fault interruption; original claim survives.
+    // Invalid -> "FORFEIT"
+    challengerDisconnectBehavior: "FORFEIT",
+
+    // Champion disconnect behavior enum values:
+    //   "REQUEUE"        = no-fault interruption; original claim survives.
+    //   "CHALLENGER_WIN" = disconnected Champion awards the challenger a win.
+    // Invalid -> "REQUEUE"
+    championDisconnectBehavior: "REQUEUE"
+  },
+
+  qualification: {
+    // Number of locked Player-Champion winners who advance to the tournament.
+    // Must be >= 1. Invalid -> 15.
+    tournamentSlots: 15,
+
+    // true (recommended): a valid voucher use reserves the player's sequence
+    // number immediately. Earlier unresolved claims keep priority over later
+    // wins, even if the later battle finishes first.
+    preserveVoucherClaimOrder: true
+  },
+
+  voucher: {
+    // Display name for the LucidMon Champion Voucher item.
+    displayName: "Champion Challenge Voucher",
+
+    // In PLAYER mode, completing RCT's Kanto Elite Four advancement grants
+    // one voucher if the player is not already qualified / queued.
+    grantAfterEliteFour: true,
+
+    // Prevents a player from reserving several positions simultaneously.
+    oneOpenClaimPerPlayer: true
+  }
+}

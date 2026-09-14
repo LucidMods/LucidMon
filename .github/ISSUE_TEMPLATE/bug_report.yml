@@ -1,0 +1,50 @@
+name: Bug report
+description: Report a reproducible LucidMon problem
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for testing LucidMon. Please remove passwords, tokens and private server information from logs."
+  - type: input
+    id: lucidmon_version
+    attributes:
+      label: LucidMon version
+      placeholder: 0.1.1-unstable.2
+    validations:
+      required: true
+  - type: input
+    id: mc_fabric
+    attributes:
+      label: Minecraft / Fabric Loader
+      placeholder: Minecraft 1.21.1 / Fabric Loader 0.19.5
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Relevant dependency versions
+      description: Cobblemon, RCT/RCT API, RGS, Sophisticated Backpacks/Core, etc.
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / crash report
+      render: shell

@@ -1,0 +1,12 @@
+{
+  "structures": [
+    { "structure": "rgs:fuchsia_gym", "weight": 1 }
+  ],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "spacing": 32,
+    "separation": 8,
+    "salt": 158718,
+    "frequency": 0.0
+  }
+}

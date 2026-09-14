@@ -1,0 +1,13 @@
+{
+  "criteria": {
+    "unlock": {
+      "trigger": "minecraft:tick"
+    }
+  },
+  "rewards": {
+    "recipes": [
+      "virtualloot:virtual_pasture"
+    ]
+  },
+  "sends_telemetry_event": false
+}

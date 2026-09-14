@@ -1,0 +1,46 @@
+name: MapGen report
+description: Report terrain, biome, route, landmark or structure-placement problems
+title: "[MapGen]: "
+labels: ["mapgen", "bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: LucidMon version
+    validations:
+      required: true
+  - type: dropdown
+    id: profile
+    attributes:
+      label: Map profile
+      options:
+        - STANDARD
+        - KANTO_ARCHIPELAGO
+        - Other / development profile
+    validations:
+      required: true
+  - type: input
+    id: seed
+    attributes:
+      label: World seed
+    validations:
+      required: true
+  - type: input
+    id: coords
+    attributes:
+      label: Dimension and coordinates
+      placeholder: minecraft:overworld, X 0 Y 80 Z 0
+  - type: textarea
+    id: audit
+    attributes:
+      label: Biome audit / preflight output
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong?
+    validations:
+      required: true
+  - type: textarea
+    id: attachments
+    attributes:
+      label: Screenshots / map images / logs

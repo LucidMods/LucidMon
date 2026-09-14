@@ -1,0 +1,12 @@
+{
+  "structures": [
+    { "structure": "rgs:blackthorn_gym", "weight": 1 }
+  ],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "spacing": 32,
+    "separation": 8,
+    "salt": 444979,
+    "frequency": 0.0
+  }
+}
