@@ -33,17 +33,19 @@ public final class KantoLayout {
     private final Map<String, Zone> zones;
     private final Map<String, Area> areas;
     private final Zone startingCity;
+    private final Zone centralCity;
     private final Volcano volcano;
 
     private KantoLayout(Map<String, Region> regions, Map<String, Node> nodes, List<Route> routes,
                         Map<String, Zone> zones, Map<String, Area> areas,
-                        Zone startingCity, Volcano volcano) {
+                        Zone startingCity, Zone centralCity, Volcano volcano) {
         this.regions = Collections.unmodifiableMap(new LinkedHashMap<>(regions));
         this.nodes = Collections.unmodifiableMap(new LinkedHashMap<>(nodes));
         this.routes = List.copyOf(routes);
         this.zones = Collections.unmodifiableMap(new LinkedHashMap<>(zones));
         this.areas = Collections.unmodifiableMap(new LinkedHashMap<>(areas));
         this.startingCity = startingCity;
+        this.centralCity = centralCity;
         this.volcano = volcano;
     }
 
@@ -118,8 +120,6 @@ public final class KantoLayout {
                 int common = integer(a.get("radius"), 0);
                 int rx = Math.max(0, integer(a.get("radiusX"), common));
                 int rz = Math.max(0, integer(a.get("radiusZ"), common));
-                // Seafoam originally had no explicit radius; keep a conservative
-                // bounded footprint until the profile exposes one directly.
                 if (entry.getKey().equals("seafoamIslands") && rx == 0 && rz == 0) rx = rz = 360;
                 areas.put(entry.getKey(), new Area(entry.getKey(),
                         integer(a.get("centerX"), cfg.centerX()), integer(a.get("centerZ"), cfg.centerZ()), rx, rz, enabled));
@@ -134,6 +134,17 @@ public final class KantoLayout {
         Zone startingCity = new Zone("startingCity",
                 integer(city.get("x"), cfg.startingCityX()), integer(city.get("z"), cfg.startingCityZ()),
                 Math.max(0, integer(city.get("foundationRadius"), cfg.startingCityFoundationRadius())));
+
+        // centralCity is new in layout v2. Older configs fall back to the existing
+        // centralMetro landmark so the code remains safe until the config is replaced.
+        Map<String, Object> central = map(k.get("centralCity"));
+        Zone oldCentral = zones.get("centralMetro");
+        int fallbackCentralX = oldCentral == null ? cfg.centerX() : oldCentral.x();
+        int fallbackCentralZ = oldCentral == null ? cfg.centerZ() : oldCentral.z();
+        int fallbackCentralRadius = oldCentral == null ? 340 : Math.max(300, oldCentral.radius());
+        Zone centralCity = new Zone("centralCity",
+                integer(central.get("x"), fallbackCentralX), integer(central.get("z"), fallbackCentralZ),
+                Math.max(0, integer(central.get("foundationRadius"), fallbackCentralRadius)));
 
         Map<String, Object> v = map(k.get("volcanoIsland"));
         Map<String, Object> town = map(v.get("townSite"));
@@ -150,7 +161,7 @@ public final class KantoLayout {
                 Math.max(0, integer(town.get("radius"), 170))
         );
 
-        return new KantoLayout(regions, nodes, routes, zones, areas, startingCity, volcano);
+        return new KantoLayout(regions, nodes, routes, zones, areas, startingCity, centralCity, volcano);
     }
 
     private static KantoLayout minimal(MapGenConfigManager.KantoConfig cfg) {
@@ -159,14 +170,17 @@ public final class KantoLayout {
         nodes.put("mt_moon_east_entrance", new Node("mt_moon_east_entrance", cfg.mtMoonX() + 450, cfg.mtMoonZ() + 50));
         nodes.put("mt_moon_west_exit", new Node("mt_moon_west_exit", cfg.mtMoonX() - 450, cfg.mtMoonZ() - 50));
         Zone city = new Zone("startingCity", cfg.startingCityX(), cfg.startingCityZ(), cfg.startingCityFoundationRadius());
+        Zone central = new Zone("centralCity", cfg.centerX(), cfg.centerZ(), 340);
         Volcano v = new Volcano(cfg.volcanoX(), cfg.volcanoZ(), cfg.volcanoRadiusX(), cfg.volcanoRadiusZ(), cfg.volcanoPeakY(), 95, 42, true,
                 cfg.volcanoX() + 400, cfg.volcanoZ() + 325, 170);
-        return new KantoLayout(Map.of(), nodes, List.of(), Map.of(), Map.of(), city, v);
+        return new KantoLayout(Map.of(), nodes, List.of(), Map.of(), Map.of(), city, central, v);
     }
 
     private static KantoLayout empty() {
-        return new KantoLayout(Map.of(), Map.of(), List.of(), Map.of(), Map.of(), new Zone("startingCity", 250, 1050, 240),
-                new Volcano(-1050, 2200, 620, 500, 205, 95, 42, true, -650, 2525, 170));
+        return new KantoLayout(Map.of(), Map.of(), List.of(), Map.of(), Map.of(),
+                new Zone("startingCity", -1900, 1250, 135),
+                new Zone("centralCity", 0, 0, 340),
+                new Volcano(-1450, 2250, 430, 380, 205, 95, 42, true, -1300, 2460, 120));
     }
 
     public Collection<Region> regions() { return regions.values(); }
@@ -179,9 +193,10 @@ public final class KantoLayout {
     public Area area(String id) { return areas.get(id); }
     public Collection<Area> areas() { return areas.values(); }
     public Zone startingCity() { return startingCity; }
+    public Zone centralCity() { return centralCity; }
     public Volcano volcano() { return volcano; }
 
-    /** Returns the most strongly matching configured surface region, if any. */
+    /** Returns the strongest matching legacy configured region, if any. */
     public Region nearestRegion(int x, int z) {
         Region best = null;
         double bestD = Double.POSITIVE_INFINITY;
@@ -204,7 +219,10 @@ public final class KantoLayout {
         routes.stream().sorted(Comparator.comparing(Route::id)).forEach(r -> b.append("T:").append(r).append('\n'));
         zones.values().stream().sorted(Comparator.comparing(Zone::id)).forEach(z -> b.append("Z:").append(z).append('\n'));
         areas.values().stream().sorted(Comparator.comparing(Area::id)).forEach(a -> b.append("A:").append(a).append('\n'));
-        b.append("C:").append(startingCity).append('\n').append("V:").append(volcano).append('\n');
+        b.append("C:").append(startingCity).append('\n');
+        b.append("CC:").append(centralCity).append('\n');
+        b.append("V:").append(volcano).append('\n');
+        b.append("SHAPE:KANTO_LAYOUT_V2_POLYGON\n");
         return b.toString();
     }
 
