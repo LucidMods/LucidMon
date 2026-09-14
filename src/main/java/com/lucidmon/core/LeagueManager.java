@@ -58,6 +58,7 @@ public final class LeagueManager {
         var k=m.kanto();
         CommandBridge.feedback(src,"MapGen profile="+m.mapType()+" | config="+MapGenConfigManager.CONFIG_PATH,"aqua");
         CommandBridge.feedback(src,"Kanto profile: center="+k.centerX()+","+k.centerZ()+" diameter="+k.playableDiameter()+" requiredBiomes="+k.requiredBiomeCount()+" routes="+k.routesEnabled()+" MtMoon="+k.mtMoonEnabled(),"gray");
+        CommandBridge.feedback(src,"Boundary policy="+k.outsidePlayableAreaMode()+" biome="+k.outsidePlayableAreaBiome()+" | playableHalf="+k.playableHalfExtent()+" safeLandHalf="+k.safeLandHalfExtent()+" oceanBuffer="+k.oceanBufferBlocks(),"gray");
         if(m.mapType()==MapGenConfigManager.MapType.KANTO_ARCHIPELAGO)
             CommandBridge.feedback(src,"UNSTABLE.2 PRE-FLIGHT: KANTO_ARCHIPELAGO terrain generation is NOT active yet. Do not create the final Kanto world with this build.","red");
         else
@@ -66,9 +67,10 @@ public final class LeagueManager {
     }
     public static int cmdMapGenValidate(Object ctx,Object src){
         var r=MapGenConfigManager.lastReport;
-        CommandBridge.feedback(src,"MapGen validation: "+r.fallbackCount+" fallback(s), "+r.warnings.size()+" warning(s).","aqua");
+        CommandBridge.feedback(src,"MapGen validation: "+r.fallbackCount+" fallback(s), "+r.errors.size()+" error(s), "+r.warnings.size()+" warning(s).","aqua");
+        for(String e:r.errors) CommandBridge.feedback(src,e,"red");
         for(String w:r.warnings) CommandBridge.feedback(src,w,"yellow");
-        return 1;
+        return r.errors.isEmpty()?1:0;
     }
     public static int cmdMapGenPreflight(Object ctx,Object src){
         cmdMapGenStatus(ctx,src);
@@ -76,6 +78,10 @@ public final class LeagueManager {
         var m=MapGenConfigManager.current;
         var k=m.kanto();
         if(m.mapType()==MapGenConfigManager.MapType.KANTO_ARCHIPELAGO){
+            if(!MapGenConfigManager.lastReport.errors.isEmpty()){
+                CommandBridge.feedback(src,"BLOCKER: KANTO_ARCHIPELAGO has boundary/profile validation errors. Fix them before world creation.","red");
+                return 0;
+            }
             CommandBridge.feedback(src,"Pre-flight profile values loaded: startCity="+k.startingCityStructure()+" @ "+k.startingCityX()+","+k.startingCityZ()+" | volcano="+k.volcanoX()+","+k.volcanoZ()+" | MtMoon="+k.mtMoonX()+","+k.mtMoonZ(),"aqua");
             CommandBridge.feedback(src,"BLOCKER: absolute-coordinate Kanto chunk generator is not enabled in this build. Keep the final world folder absent until a generator-enabled build is installed.","red");
             return 0;

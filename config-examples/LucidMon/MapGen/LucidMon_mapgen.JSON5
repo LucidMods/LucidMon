@@ -36,8 +36,22 @@
     // vegetation and smaller terrain details.
     preserveMacroLayoutAcrossSeeds: true,
 
-    // Deep-water buffer around the tournament area.
+    // Deep-water buffer INSIDE the playable boundary. Major land features
+    // must remain inside (playableDiameter / 2) - oceanBufferBlocks.
     oceanBufferBlocks: 256,
+
+    // Hard boundary policy. This applies even when setWorldBorder is false.
+    // Outside the configured playable square, MapGen terrain is ocean-only.
+    // No LucidMon landmass, route, town, mountain, or other dry-land terrain
+    // is allowed outside the configured play area.
+    outsidePlayableArea: {
+      // Currently the only valid value. Invalid values -> OCEAN_ONLY.
+      mode: "OCEAN_ONLY",
+
+      // Must be a vanilla Overworld ocean biome. Invalid/non-ocean IDs fall
+      // back to minecraft:deep_ocean.
+      biome: "minecraft:deep_ocean"
+    },
 
     // ========================================================================
     // BIOME COVERAGE
@@ -139,8 +153,8 @@
         // Snowy northern crown: high mountains and polar coast.
         northSnowCrown: {
           centerX: 0,
-          centerZ: -2150,
-          radius: 1050,
+          centerZ: -1850,
+          radius: 850,
           biomes: [
             "minecraft:snowy_plains",
             "minecraft:snowy_taiga",
@@ -641,10 +655,10 @@
       enabled: true,
 
       centerX: -1050,
-      centerZ: 2350,
+      centerZ: 2200,
 
       radiusX: 620,
-      radiusZ: 520,
+      radiusZ: 500,
 
       peakY: 205,
       craterRadius: 95,

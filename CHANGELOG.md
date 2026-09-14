@@ -2,6 +2,15 @@
 
 All notable LucidMon changes should be recorded here. Versions remain `[UNSTABLE]` until the project reaches a human-verified release milestone.
 
+## [Unreleased]
+
+### Changed
+- Added a hard `OCEAN_ONLY` MapGen policy outside the configured playable square, independent of the optional Minecraft world border.
+- Added configurable outside-ocean biome validation with safe fallback to `minecraft:deep_ocean`.
+- Added safe-land-envelope validation based on `(playableDiameter / 2) - oceanBufferBlocks`; out-of-bounds regions/landmarks/nodes are now profile errors instead of being silently clamped.
+- Moved the default north snow crown and southern volcano island fully inside the 6000x6000 profile's 256-block interior ocean buffer.
+- MapGen status/preflight now reports boundary policy and blocks KANTO preflight when boundary/profile errors are present.
+
 ## [0.1.1-unstable.2] - 2026-09-13
 
 ### Added
