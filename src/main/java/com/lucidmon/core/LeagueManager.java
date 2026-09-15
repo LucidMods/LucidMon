@@ -1,12 +1,14 @@
 package com.lucidmon.core;
 
-import com.lucidmon.mapgen.KantoMapGen;
+import com.lucidmon.mapgen.KantoHydrology;
 import com.lucidmon.mapgen.KantoLayout;
+import com.lucidmon.mapgen.KantoMapGen;
+import com.lucidmon.mapgen.KantoShape;
 
 import java.util.*;
 
 /**
- * Unstable-6 server control surface.
+ * Unstable-7 server control surface.
  * Gym placement/config commands and Kanto MapGen controls are active. Champion
  * queue/battle integration remains guarded until the exact RCT battle hooks are integrated.
  */
@@ -19,7 +21,7 @@ public final class LeagueManager {
         CommandBridge.feedback(src,"LucidMon "+LucidMon.DISPLAY_VERSION+" | Champion="+c.champion().type()+" | MapGen="+m.mapType(),"aqua");
         CommandBridge.feedback(src,"Core config="+ConfigManager.CONFIG_PATH+" | MapGen config="+MapGenConfigManager.CONFIG_PATH,"gray");
         CommandBridge.feedback(src,"Natural RGS gyms="+(c.suppressNaturalGymWorldgen()?"SUPPRESSED":"ENABLED")+" | manual gym placement remains available.",c.suppressNaturalGymWorldgen()?"green":"yellow");
-        CommandBridge.feedback(src,"Active test modules: Kanto MapGen layout v2, gym placement commands, map reveal, soulpack, virtual pasture. Player Champion battle flow is scaffold-only.","yellow");
+        CommandBridge.feedback(src,"Active test modules: Kanto MapGen layout v3, gym placement commands, map reveal, soulpack, virtual pasture. Player Champion battle flow is scaffold-only.","yellow");
         return 1;
     }
     public static int cmdValidateConfig(Object ctx,Object src){
@@ -49,7 +51,7 @@ public final class LeagueManager {
         if(g==null){CommandBridge.feedback(src,"Unknown gym id '"+id+"'. Valid: "+ConfigManager.current.gyms().keySet(),"red");return 0;}
         if(!g.enabled()){CommandBridge.feedback(src,"Gym '"+id+"' is disabled in config.","yellow");return 0;}
         if(g.x()==0&&g.y()==80&&g.z()==0){CommandBridge.feedback(src,"Refusing to place '"+id+"' at the untouched default 0 80 0. Configure coordinates first.","red");return 0;}
-        if(g.rotation()!=ConfigManager.Rotation.NONE) CommandBridge.feedback(src,"UNSTABLE.6 note: RGS /place structure does not apply configured rotation yet; placing with NONE orientation.","yellow");
+        if(g.rotation()!=ConfigManager.Rotation.NONE) CommandBridge.feedback(src,"UNSTABLE.7 note: RGS /place structure does not apply configured rotation yet; placing with NONE orientation.","yellow");
         String cmd="execute in "+g.dimension()+" run place structure "+g.structure()+" "+g.x()+" "+g.y()+" "+g.z();
         int result=CommandBridge.execute(cmd,src);
         if(result>0)CommandBridge.feedback(src,"Placed "+id+" at "+g.x()+" "+g.y()+" "+g.z()+".","green");
@@ -62,7 +64,8 @@ public final class LeagueManager {
         var k=m.kanto();
         var layout=KantoLayout.current();
         CommandBridge.feedback(src,"MapGen profile="+m.mapType()+" | config="+MapGenConfigManager.CONFIG_PATH,"aqua");
-        CommandBridge.feedback(src,"Kanto layout v2: center="+k.centerX()+","+k.centerZ()+" diameter="+k.playableDiameter()+" requiredBiomes="+k.requiredBiomeCount()+" routes="+k.routesEnabled()+" MtMoon="+k.mtMoonEnabled(),"gray");
+        CommandBridge.feedback(src,"Kanto layout v3: center="+k.centerX()+","+k.centerZ()+" diameter="+k.playableDiameter()+" requiredBiomes="+k.requiredBiomeCount()+" routes="+k.routesEnabled()+" MtMoon="+k.mtMoonEnabled(),"gray");
+        CommandBridge.feedback(src,"Natural geography: rivers="+KantoHydrology.riverCount()+" lakes="+KantoHydrology.lakeCount()+" offshoreIslands="+KantoShape.satelliteIslandCount()+" | clustered biome fields=enabled","gray");
         CommandBridge.feedback(src,"City hierarchy: starter="+layout.startingCity().x()+","+layout.startingCity().z()+" r="+layout.startingCity().radius()+" | central="+layout.centralCity().x()+","+layout.centralCity().z()+" r="+layout.centralCity().radius(),"gray");
         CommandBridge.feedback(src,"Boundary policy="+k.outsidePlayableAreaMode()+" biome="+k.outsidePlayableAreaBiome()+" | playableHalf="+k.playableHalfExtent()+" safeLandHalf="+k.safeLandHalfExtent()+" oceanBuffer="+k.oceanBufferBlocks(),"gray");
         if(m.mapType()==MapGenConfigManager.MapType.KANTO_ARCHIPELAGO) {
@@ -96,7 +99,7 @@ public final class LeagueManager {
                 CommandBridge.feedback(src,"BLOCKER: Kanto world preset is not active. Singleplayer: create a NEW world with World Type 'LucidMon: Kanto Archipelago'. Dedicated server: set level-type="+KantoMapGen.WORLD_PRESET_ID+" before creating the world.","red");
                 return 0;
             }
-            CommandBridge.feedback(src,"KANTO pre-flight PASS: layout v2 generator active, profile lock verified, boundary policy loaded.","green");
+            CommandBridge.feedback(src,"KANTO pre-flight PASS: layout v3 generator active, profile lock verified, boundary policy loaded.","green");
             return 1;
         }
         CommandBridge.feedback(src,"STANDARD pre-flight PASS: this MapGen module will not alter normal world generation.","green");
@@ -107,7 +110,7 @@ public final class LeagueManager {
             CommandBridge.feedback(src,"Biome audit requires an active KANTO_ARCHIPELAGO world.","yellow");
             return 0;
         }
-        CommandBridge.feedback(src,"Kanto generator is active. Full 53-biome generated-world audit scanning is not yet implemented in unstable.6; use this build for layout-v2 terrain/biome verification first.","yellow");
+        CommandBridge.feedback(src,"Kanto generator is active. Full 53-biome generated-world audit scanning is not yet implemented in unstable.7; use this build for layout-v3 natural-geography verification first.","yellow");
         return 0;
     }
 
@@ -119,7 +122,7 @@ public final class LeagueManager {
     public static int cmdSoulpackDebug(Object ctx,Object src){return forward(src,"function soulpack:debug_state","Soulpack debug requested.");}
     private static int forward(Object src,String command,String ok){int r=CommandBridge.execute(command,src);if(r>0)CommandBridge.feedback(src,ok,"green");return r;}
 
-    private static int championPending(Object src){CommandBridge.feedback(src,"Player Champion queue/battle integration is not enabled in v0.1.2-unstable.6. The JSON5 section remains parsed for forward compatibility.","yellow");return 0;}
+    private static int championPending(Object src){CommandBridge.feedback(src,"Player Champion queue/battle integration is not enabled in v0.1.2-unstable.7. The JSON5 section remains parsed for forward compatibility.","yellow");return 0;}
     public static int cmdQueue(Object c,Object s){return championPending(s);} public static int cmdQualifiers(Object c,Object s){return championPending(s);}
     public static int cmdChampionReady(Object c,Object s){return championPending(s);} public static int cmdChampionResult(Object c,Object s){return championPending(s);}
     public static int cmdChallengeInfo(Object c,Object s){return championPending(s);} public static int cmdChallengeCancel(Object c,Object s){return championPending(s);}

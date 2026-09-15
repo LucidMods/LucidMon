@@ -14,15 +14,16 @@ import java.util.stream.Stream;
 
 /**
  * Absolute-coordinate biome source for the Kanto Archipelago world preset.
- * The serialized biome list makes the preset datapack-friendly while the
- * ecological assignment follows the hand-authored Kanto macro geography.
+ *
+ * Layout v3 deliberately avoids nearest-cell/Voronoi selection. Broad authored
+ * ecological families are warped continuously, then low-frequency continuous
+ * noise chooses related variants inside each family. The result is fewer,
+ * larger biome provinces with curved boundaries instead of a patchwork grid.
  */
 public final class KantoBiomeSource extends BiomeSource {
     public static final MapCodec<KantoBiomeSource> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
             Biome.LIST_CODEC.fieldOf("biomes").forGetter(source -> source.allowedBiomes)
     ).apply(instance, KantoBiomeSource::new));
-
-    private static final int PATCH_SIZE = 224;
 
     private final HolderSet<Biome> allowedBiomes;
     private final Map<String, Holder<Biome>> byId;
@@ -55,135 +56,153 @@ public final class KantoBiomeSource extends BiomeSource {
         if (!KantoTerrainShaper.insidePlayable(x, z, cfg)) return biome(cfg.outsidePlayableAreaBiome());
 
         boolean macroLand = KantoTerrainShaper.isMacroLand(x, z, cfg, layout);
+        KantoShape.SurfaceFamily family = KantoShape.surfaceFamily(x, z, cfg);
 
-        // Meaningful cave-biome volumes. Cave placement remains broad and
-        // landmark-driven; the radial visual bug was a surface-biome issue.
+        // Broad underground habitat volumes remain landmark/ecology-driven.
         if (macroLand && y < 48) {
-            if (y < 4 && (insideRegion(layout.region("northSnowCrown"), x, z)
-                    || insideRegion(layout.region("northwestHighlands"), x, z))) {
+            if (y < 4 && (family == KantoShape.SurfaceFamily.SNOW || family == KantoShape.SurfaceFamily.HIGHLAND)) {
                 return biome("minecraft:deep_dark");
             }
-            if (y < 28 && (isEastDryland(x, z, cfg) || insideArea(layout.area("rockTunnel"), x, z)
-                    || insideVolcano(layout.volcano(), x, z))) {
+            if (y < 28 && (family == KantoShape.SurfaceFamily.DRYLAND
+                    || insideArea(layout.area("rockTunnel"), x, z)
+                    || KantoShape.isVolcanoIsland(x, z, layout))) {
                 return biome("minecraft:dripstone_caves");
             }
-            if (y < 42 && (KantoShape.isDenseForest(x, z, cfg)
-                    || KantoShape.isMarshCoast(x, z, cfg)
-                    || isCentral(x, z, cfg))) {
+            if (y < 42 && (family == KantoShape.SurfaceFamily.JUNGLE
+                    || family == KantoShape.SurfaceFamily.WETLAND
+                    || family == KantoShape.SurfaceFamily.TEMPERATE)) {
                 return biome("minecraft:lush_caves");
             }
         }
 
-        if (macroLand) return surfaceBiome(x, y, z, cfg, layout);
+        if (macroLand) return surfaceBiome(x, y, z, cfg, layout, family);
         return biome(selectOceanBiome(x, z, cfg));
     }
 
-    private Holder<Biome> surfaceBiome(int x, int y, int z, MapGenConfigManager.KantoConfig cfg, KantoLayout layout) {
+    private Holder<Biome> surfaceBiome(int x, int y, int z, MapGenConfigManager.KantoConfig cfg,
+                                       KantoLayout layout, KantoShape.SurfaceFamily family) {
         double coast = KantoTerrainShaper.macroLandScore(x, z, cfg, layout);
+        KantoHydrology.Sample hydro = KantoHydrology.sample(x, z, cfg);
 
-        // Mt. Moon itself is snow-capped, then the country north of it becomes
-        // progressively more snow dominated.
+        // Rivers and lakes use actual river biomes; northern water freezes.
+        if (hydro.hasWater() && hydro.channel() > 0.08) {
+            return biome(hydro.frozen() ? "minecraft:frozen_river" : "minecraft:river");
+        }
+
+        // Mt. Moon is explicitly snow-capped even though its foothills can lie
+        // inside another broad ecological province.
         KantoLayout.Area moon = layout.area("mtMoon");
-        if (moon != null && moon.enabled() && insideArea(moon, x, z) && y >= 108) {
-            if (y >= 154) return biome("minecraft:frozen_peaks");
-            if (y >= 132) return biome("minecraft:jagged_peaks");
+        if (moon != null && moon.enabled() && insideArea(moon, x, z) && y >= 106) {
+            if (y >= 156) return biome("minecraft:frozen_peaks");
+            if (y >= 134) return biome("minecraft:jagged_peaks");
             return biome("minecraft:snowy_slopes");
         }
 
-        if (KantoShape.isFarNorth(x, z, cfg)) {
-            if (coast < 0.42) return biome("minecraft:snowy_beach");
-            return biome(selectIrregular(List.of(
-                    "minecraft:snowy_plains", "minecraft:snowy_taiga", "minecraft:grove",
-                    "minecraft:snowy_slopes", "minecraft:ice_spikes"), x, z, 0x51A9D4L));
+        // Preserve a recognizable volcanic ecology without forcing a perfect
+        // circular biome footprint; the island mask itself is warped in KantoShape.
+        if (KantoShape.isVolcanoIsland(x, z, layout)) {
+            if (y >= 128) return biome("minecraft:stony_peaks");
+            if (y >= 88) return biome(variant(x, z, 0x701CA91L, 520.0) > 0.15
+                    ? "minecraft:wooded_badlands" : "minecraft:badlands");
+            if (coast < 0.42) return biome("minecraft:stony_shore");
+            return biome("minecraft:plains");
         }
 
-        // Wooded coastlines in the reference map are deliberately translated
-        // into wetland ecology rather than generic forest touching the sea.
-        if (KantoShape.isMarshCoast(x, z, cfg)) {
-            return biome(selectIrregular(List.of("minecraft:swamp", "minecraft:mangrove_swamp"), x, z, 0xA77A11L));
-        }
-
-        // The first ~70-100 blocks of an ordinary shore use beach/stony shore,
-        // matching the new walkable coastal shelf in the terrain shaper.
-        if (coast < 0.38) {
-            int rx = x - cfg.centerX();
-            if (rx > 1500 || rx < -1900) return biome(selectIrregular(List.of("minecraft:beach", "minecraft:stony_shore"), x, z, 0xC0457L));
+        // Coast is a geographic band rather than an ecosystem-cell boundary.
+        if (coast < 0.40) {
+            if (family == KantoShape.SurfaceFamily.SNOW) return biome("minecraft:snowy_beach");
+            if (family == KantoShape.SurfaceFamily.WETLAND && KantoShape.wetlandWeight(x, z, cfg) > 0.48) {
+                return biome("minecraft:mangrove_swamp");
+            }
+            double rocky = variant(x, z, 0xC0457L, 520.0);
+            if (family == KantoShape.SurfaceFamily.HIGHLAND || rocky > 0.58) return biome("minecraft:stony_shore");
             return biome("minecraft:beach");
         }
 
-        // Dense tree masses shown on the Kanto reference become jungle-family
-        // biomes. This is intentionally a semantic mask, not a circular radius.
-        if (KantoShape.isDenseForest(x, z, cfg)) {
-            return biome(selectIrregular(List.of(
-                    "minecraft:jungle", "minecraft:sparse_jungle", "minecraft:bamboo_jungle"), x, z, 0xD3E5EL));
-        }
-
-        KantoLayout.Region region;
-        if (isEastDryland(x, z, cfg)) region = layout.region("eastDrylands");
-        else if (isNorthwestHighland(x, z, cfg)) region = layout.region("northwestHighlands");
-        else if (isSoutheast(x, z, cfg)) region = layout.region("southeastJungleChain");
-        else region = layout.region("centralTemperate");
-
-        List<String> candidates = surfaceCandidates(region);
-        if (candidates.isEmpty()) candidates = List.of("minecraft:plains", "minecraft:forest", "minecraft:meadow");
-        return biome(selectIrregular(candidates, x, z, region == null ? 0xCA470L : stableSalt(region.id())));
+        return switch (family) {
+            case SNOW -> biome(selectSnow(x, y, z));
+            case HIGHLAND -> biome(selectHighland(x, y, z));
+            case DRYLAND -> biome(selectDryland(x, z));
+            case JUNGLE -> biome(selectJungle(x, z, cfg));
+            case WETLAND -> biome(selectWetland(x, z, cfg, coast));
+            case TEMPERATE -> biome(selectTemperate(x, z));
+        };
     }
 
-    /**
-     * Jittered Voronoi patches replace the old angle/radius sector calculation.
-     * Boundaries are irregular cellular regions with no shared circular center,
-     * eliminating the visible pie slices and concentric rings from prototype 1.
-     */
-    private static String selectIrregular(List<String> candidates, int x, int z, long salt) {
-        if (candidates.size() == 1) return candidates.get(0);
-        int gx = Math.floorDiv(x, PATCH_SIZE);
-        int gz = Math.floorDiv(z, PATCH_SIZE);
-        double best = Double.POSITIVE_INFINITY;
-        long bestHash = 0L;
-
-        for (int ox = -1; ox <= 1; ox++) {
-            for (int oz = -1; oz <= 1; oz++) {
-                int cx = gx + ox, cz = gz + oz;
-                long h = hash(cx, cz, salt);
-                double jx = (((h >>> 8) & 0xffffL) / 65535.0 - 0.5) * PATCH_SIZE * 0.72;
-                double jz = (((h >>> 32) & 0xffffL) / 65535.0 - 0.5) * PATCH_SIZE * 0.72;
-                double px = (cx + 0.5) * PATCH_SIZE + jx;
-                double pz = (cz + 0.5) * PATCH_SIZE + jz;
-                double dx = x - px, dz = z - pz;
-                double d = dx * dx + dz * dz;
-                if (d < best) { best = d; bestHash = h; }
-            }
-        }
-        return candidates.get(Math.floorMod((int)(bestHash ^ (bestHash >>> 32)), candidates.size()));
+    private static String selectTemperate(int x, int z) {
+        double n = variant(x, z, 0x100101L, 760.0);
+        double rare = variant(x, z, 0x100102L, 1280.0);
+        if (rare > 0.70 && n > 0.05) return "minecraft:cherry_grove";
+        if (n > 0.66) return "minecraft:dark_forest";
+        if (n > 0.34) return "minecraft:forest";
+        if (n > 0.12) return "minecraft:birch_forest";
+        if (n > -0.18) return "minecraft:plains";
+        if (n > -0.40) return "minecraft:meadow";
+        if (n > -0.62) return "minecraft:flower_forest";
+        return rare < -0.35 ? "minecraft:sunflower_plains" : "minecraft:old_growth_birch_forest";
     }
 
-    private static List<String> surfaceCandidates(KantoLayout.Region region) {
-        if (region == null) return List.of();
-        return region.biomes().stream().filter(KantoBiomeSource::isOrdinaryLandBiome).toList();
+    private static String selectJungle(int x, int z, MapGenConfigManager.KantoConfig cfg) {
+        double weight = KantoShape.jungleWeight(x, z, cfg);
+        double n = variant(x, z, 0x200201L, 610.0);
+        if (weight < 0.50) return "minecraft:sparse_jungle";
+        if (n > 0.58) return "minecraft:bamboo_jungle";
+        return "minecraft:jungle";
     }
 
-    private static boolean isOrdinaryLandBiome(String id) {
-        return !id.contains("ocean")
-                && !id.equals("minecraft:deep_dark")
-                && !id.equals("minecraft:lush_caves")
-                && !id.equals("minecraft:dripstone_caves")
-                && !id.equals("minecraft:river")
-                && !id.equals("minecraft:frozen_river")
-                && !id.equals("minecraft:beach")
-                && !id.equals("minecraft:snowy_beach")
-                && !id.equals("minecraft:stony_shore");
+    private static String selectWetland(int x, int z, MapGenConfigManager.KantoConfig cfg, double coast) {
+        double n = variant(x, z, 0x300301L, 720.0);
+        double weight = KantoShape.wetlandWeight(x, z, cfg);
+        if (coast < 0.78 || weight > 0.70 || n > 0.25) return "minecraft:mangrove_swamp";
+        return "minecraft:swamp";
+    }
+
+    private static String selectDryland(int x, int z) {
+        double n = variant(x, z, 0x400401L, 820.0);
+        double rare = variant(x, z, 0x400402L, 1180.0);
+        if (n > 0.60) return rare > 0.15 ? "minecraft:eroded_badlands" : "minecraft:badlands";
+        if (n > 0.28) return rare > 0.45 ? "minecraft:wooded_badlands" : "minecraft:savanna_plateau";
+        if (n > -0.18) return "minecraft:savanna";
+        if (n > -0.48) return "minecraft:desert";
+        return rare > 0.15 ? "minecraft:windswept_savanna" : "minecraft:desert";
+    }
+
+    private static String selectHighland(int x, int y, int z) {
+        double n = variant(x, z, 0x500501L, 700.0);
+        if (y >= 148) return "minecraft:stony_peaks";
+        if (y >= 124) return n > 0.10 ? "minecraft:windswept_hills" : "minecraft:windswept_gravelly_hills";
+        if (n > 0.55) return "minecraft:old_growth_spruce_taiga";
+        if (n > 0.18) return "minecraft:old_growth_pine_taiga";
+        if (n > -0.18) return "minecraft:taiga";
+        return "minecraft:windswept_forest";
+    }
+
+    private static String selectSnow(int x, int y, int z) {
+        double n = variant(x, z, 0x600601L, 760.0);
+        double rare = variant(x, z, 0x600602L, 1250.0);
+        if (y >= 160) return "minecraft:frozen_peaks";
+        if (y >= 140) return "minecraft:jagged_peaks";
+        if (y >= 116) return "minecraft:snowy_slopes";
+        if (rare > 0.70 && n > 0.12) return "minecraft:ice_spikes";
+        if (n > 0.36) return "minecraft:snowy_taiga";
+        if (n > -0.12) return "minecraft:grove";
+        return "minecraft:snowy_plains";
     }
 
     private String selectOceanBiome(int x, int z, MapGenConfigManager.KantoConfig cfg) {
-        int dx = x - cfg.centerX();
-        int dz = z - cfg.centerZ();
+        int rx = x - cfg.centerX();
+        int rz = z - cfg.centerZ();
         double score = KantoTerrainShaper.macroLandScore(x, z, cfg, KantoLayout.current());
         boolean deep = score < -1.15;
 
-        if (dz < -1700) return deep ? "minecraft:deep_frozen_ocean" : "minecraft:frozen_ocean";
-        if (dx < -900 && dz < -700) return deep ? "minecraft:deep_cold_ocean" : "minecraft:cold_ocean";
-        if (dx > 900 && dz > 800) return deep ? "minecraft:deep_lukewarm_ocean" : "minecraft:warm_ocean";
-        if (dz > 800) return deep ? "minecraft:deep_lukewarm_ocean" : "minecraft:lukewarm_ocean";
+        // Climate boundaries are warped so ocean colors do not introduce new
+        // ruler-straight lines around an otherwise organic archipelago.
+        double climateZ = rz + KantoShape.fixedNoise(rx, rz, 0x0CEA01L, 760.0) * 430.0;
+        double climateX = rx + KantoShape.fixedNoise(rx, rz, 0x0CEA02L, 820.0) * 380.0;
+        if (climateZ < -1650) return deep ? "minecraft:deep_frozen_ocean" : "minecraft:frozen_ocean";
+        if (climateX < -900 && climateZ < -650) return deep ? "minecraft:deep_cold_ocean" : "minecraft:cold_ocean";
+        if (climateX > 850 && climateZ > 720) return deep ? "minecraft:deep_lukewarm_ocean" : "minecraft:warm_ocean";
+        if (climateZ > 760) return deep ? "minecraft:deep_lukewarm_ocean" : "minecraft:lukewarm_ocean";
         return deep ? "minecraft:deep_ocean" : "minecraft:ocean";
     }
 
@@ -196,31 +215,10 @@ public final class KantoBiomeSource extends BiomeSource {
         return allowedBiomes.get(0);
     }
 
-    private static boolean isCentral(int x, int z, MapGenConfigManager.KantoConfig cfg) {
-        int rx = x - cfg.centerX(), rz = z - cfg.centerZ();
-        return Math.abs(rx) < 1300 && Math.abs(rz) < 1200;
-    }
-
-    private static boolean isEastDryland(int x, int z, MapGenConfigManager.KantoConfig cfg) {
-        int rx = x - cfg.centerX(), rz = z - cfg.centerZ();
-        return rx > 1100 && rz > -1100 && rz < 950;
-    }
-
-    private static boolean isNorthwestHighland(int x, int z, MapGenConfigManager.KantoConfig cfg) {
-        int rx = x - cfg.centerX(), rz = z - cfg.centerZ();
-        return rx < -950 && rz < -500;
-    }
-
-    private static boolean isSoutheast(int x, int z, MapGenConfigManager.KantoConfig cfg) {
-        int rx = x - cfg.centerX(), rz = z - cfg.centerZ();
-        return rx > 700 && rz > 650;
-    }
-
-    private static boolean insideRegion(KantoLayout.Region r, int x, int z) {
-        if (r == null) return false;
-        double dx = (x - r.centerX()) / (double)r.radius();
-        double dz = (z - r.centerZ()) / (double)r.radius();
-        return dx * dx + dz * dz <= 1.0;
+    private static double variant(int x, int z, long salt, double scale) {
+        double broad = KantoShape.fixedNoise(x, z, salt, scale);
+        double detail = KantoShape.fixedNoise(x, z, salt ^ 0x5F5F5FL, scale * 0.42) * 0.28;
+        return Math.max(-1.0, Math.min(1.0, broad + detail));
     }
 
     private static boolean insideArea(KantoLayout.Area a, int x, int z) {
@@ -228,29 +226,5 @@ public final class KantoBiomeSource extends BiomeSource {
         double dx = (x - a.x()) / (double)a.radiusX();
         double dz = (z - a.z()) / (double)a.radiusZ();
         return dx * dx + dz * dz <= 1.0;
-    }
-
-    private static boolean insideVolcano(KantoLayout.Volcano v, int x, int z) {
-        double dx = (x - v.x()) / (double)v.radiusX();
-        double dz = (z - v.z()) / (double)v.radiusZ();
-        return dx * dx + dz * dz <= 1.0;
-    }
-
-    private static long stableSalt(String id) {
-        long h = 0xcbf29ce484222325L;
-        for (int i = 0; i < id.length(); i++) {
-            h ^= id.charAt(i);
-            h *= 0x100000001b3L;
-        }
-        return h;
-    }
-
-    private static long hash(int x, int z, long salt) {
-        long h = salt ^ (x * 0x9E3779B97F4A7C15L) ^ (z * 0xC2B2AE3D27D4EB4FL);
-        h ^= h >>> 30;
-        h *= 0xBF58476D1CE4E5B9L;
-        h ^= h >>> 27;
-        h *= 0x94D049BB133111EBL;
-        return h ^ (h >>> 31);
     }
 }
