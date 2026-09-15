@@ -23,7 +23,7 @@ import java.util.HexFormat;
 public final class KantoMapGen {
     public static final ResourceLocation BIOME_SOURCE_ID = ResourceLocation.fromNamespaceAndPath("lucidmon", "kanto");
     public static final String WORLD_PRESET_ID = "lucidmon:kanto_archipelago";
-    public static final int PROFILE_LAYOUT_VERSION = 2;
+    public static final int PROFILE_LAYOUT_VERSION = 3;
     private static volatile boolean active;
     private static volatile String activationMessage = "Kanto world has not been loaded yet.";
 
@@ -64,7 +64,7 @@ public final class KantoMapGen {
                     + MapGenConfigManager.current.kanto().outsidePlayableAreaMode() + " / "
                     + MapGenConfigManager.current.kanto().outsidePlayableAreaBiome() + ".");
 
-            // Layout v2 guarantees the small southwest starter settlement and the
+            // Layout v3 preserves the small southwest starter settlement and the
             // large central/Celadon BCA village exactly once per world.
             KantoCityPlacer.schedule(server, world);
         } else if (presetActive) {
