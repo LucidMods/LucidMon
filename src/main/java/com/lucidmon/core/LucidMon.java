@@ -4,7 +4,7 @@ import com.lucidmon.mapgen.KantoMapGen;
 import net.fabricmc.api.ModInitializer;
 
 public final class LucidMon implements ModInitializer {
-    public static final String VERSION = "0.1.2-unstable.6";
+    public static final String VERSION = "0.1.2-unstable.7";
     public static final String DISPLAY_VERSION = "v0.1.2 [UNSTABLE]";
 
     @Override
@@ -14,10 +14,10 @@ public final class LucidMon implements ModInitializer {
         MapGenConfigManager.load();
         KantoMapGen.register();
         CommandBridge.register();
-        log("Modules bundled in this test build: Kanto layout v2 terrain/biomes, configurable RGS gym suppression, League gym placement scaffold, Map Reveal v3, Soulpack v9, Virtual Pasture Cobblemon 1.8 compatibility build.");
+        log("Modules bundled in this test build: Kanto layout v3 warped geography/hydrology, configurable RGS gym suppression, League gym placement scaffold, Map Reveal v3, Soulpack v9, Virtual Pasture Cobblemon 1.8 compatibility build.");
         log("MapGen note: STANDARD leaves terrain generation unchanged. KANTO_ARCHIPELAGO requires mapType=KANTO_ARCHIPELAGO plus a world created with the LucidMon: Kanto Archipelago preset (dedicated servers: level-type=lucidmon:kanto_archipelago).");
         log("Gym note: natural RGS gym/League worldgen is suppressed by default; set gyms.suppressNaturalWorldgen=false to restore native RGS spawning.");
-        log("Champion note: Player Champion matchmaking/battle UI is still not enabled in unstable.6. AI/PLAYER config remains parsed and validated for forward compatibility.");
+        log("Champion note: Player Champion matchmaking/battle UI is still not enabled in unstable.7. AI/PLAYER config remains parsed and validated for forward compatibility.");
     }
 
     public static void log(String s) { System.out.println("[LucidMon] " + s); }
