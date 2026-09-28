@@ -243,7 +243,7 @@ public final class KantoLayout {
         b.append("C:").append(startingCity()).append('\n');
         b.append("CC:").append(centralCity()).append('\n');
         b.append("V:").append(volcano()).append('\n');
-        b.append("SHAPE:KANTO_LAYOUT_V2_POLYGON\n");
+        b.append("SHAPE:KANTO_LAYOUT_V4_NATURAL_NO_ROADS\n");
         return b.toString();
     }
 

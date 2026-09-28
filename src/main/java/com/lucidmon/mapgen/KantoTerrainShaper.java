@@ -161,9 +161,9 @@ public final class KantoTerrainShaper {
     }
 
     public static void paintRoutes(ChunkAccess chunk) {
-        if (!enabled() || !MapGenConfigManager.current.kanto().routesEnabled()) return;
-        KantoLayout layout = KantoLayout.current();
         MapGenConfigManager.KantoConfig cfg = MapGenConfigManager.current.kanto();
+        if (!enabled() || !cfg.routesEnabled() || !cfg.routeSurfacePaintingEnabled()) return;
+        KantoLayout layout = KantoLayout.current();
         int baseX = chunk.getPos().getMinBlockX();
         int baseZ = chunk.getPos().getMinBlockZ();
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
@@ -309,7 +309,7 @@ public final class KantoTerrainShaper {
     }
 
     private static int applyRouteGrading(int y, int x, int z, MapGenConfigManager.KantoConfig cfg, KantoLayout layout, RandomState random) {
-        if (!cfg.routesEnabled()) return y;
+        if (!cfg.routesEnabled() || !cfg.routeTerrainGradingEnabled()) return y;
         double best = Double.POSITIVE_INFINITY;
         KantoLayout.Route bestRoute = null;
         RouteProjection bestProjection = null;

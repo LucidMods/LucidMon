@@ -309,6 +309,12 @@
     routes: {
       enabled: true,
 
+      // The route graph remains available for landmark connectivity and future
+      // manual road placement, but visible road paving is disabled by default.
+      // This keeps the authored world natural during MapGen iteration.
+      paintSurface: false,
+      gradeTerrain: false,
+
       // Valid values:
       //   "NATURAL"  = dirt/coarse dirt/gravel/path blocks; blends into terrain.
       //   "BUILT"    = more formal roads near cities with lamps/curbs/bridges.

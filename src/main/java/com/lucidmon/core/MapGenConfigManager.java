@@ -108,6 +108,8 @@ public final class MapGenConfigManager {
 
         Map<String,Object> routes = map(k.get("routes"));
         boolean routesEnabled = bool(routes.get("enabled"), d.kanto.routesEnabled, "kantoArchipelago.routes.enabled", r);
+        boolean routeSurfacePaintingEnabled = bool(routes.get("paintSurface"), d.kanto.routeSurfacePaintingEnabled, "kantoArchipelago.routes.paintSurface", r);
+        boolean routeTerrainGradingEnabled = bool(routes.get("gradeTerrain"), d.kanto.routeTerrainGradingEnabled, "kantoArchipelago.routes.gradeTerrain", r);
         RouteStyle routeStyle = enumValue(routes.get("style"), RouteStyle.class, d.kanto.routeStyle, "kantoArchipelago.routes.style", r);
         int routeWidth = intRange(routes.get("defaultWidth"), d.kanto.defaultRouteWidth, 1, 31, "kantoArchipelago.routes.defaultWidth", r);
         int cityRoadWidth = intRange(routes.get("cityApproachWidth"), d.kanto.cityApproachWidth, routeWidth, 63, "kantoArchipelago.routes.cityApproachWidth", r);
@@ -133,7 +135,7 @@ public final class MapGenConfigManager {
             minSurface, minOcean, minCave, requiredBiomes,
             cityEnabled, cityStructure, cityX, cityZ, cityRotation, foundation, suppressCopies,
             volcanoX, volcanoZ, volcanoRadiusX, volcanoRadiusZ, peakY,
-            routesEnabled, routeStyle, routeWidth, cityRoadWidth,
+            routesEnabled, routeSurfacePaintingEnabled, routeTerrainGradingEnabled, routeStyle, routeWidth, cityRoadWidth,
             mtMoonEnabled, mtMoonX, mtMoonZ, mtMoonConnected
         );
 
@@ -231,7 +233,7 @@ public final class MapGenConfigManager {
         BiomePolicy biomePolicy,int minimumSurfaceBiomeDiameter,int minimumOceanBiomeDiameter,int minimumCaveBiomeDiameter,int requiredBiomeCount,
         boolean startingCityEnabled,String startingCityStructure,int startingCityX,int startingCityZ,Rotation startingCityRotation,int startingCityFoundationRadius,boolean suppressNaturalCityCopies,
         int volcanoX,int volcanoZ,int volcanoRadiusX,int volcanoRadiusZ,int volcanoPeakY,
-        boolean routesEnabled,RouteStyle routeStyle,int defaultRouteWidth,int cityApproachWidth,
+        boolean routesEnabled,boolean routeSurfacePaintingEnabled,boolean routeTerrainGradingEnabled,RouteStyle routeStyle,int defaultRouteWidth,int cityApproachWidth,
         boolean mtMoonEnabled,int mtMoonX,int mtMoonZ,boolean mtMoonGuaranteedPath
     ) {
         public int playableHalfExtent(){ return playableDiameter/2; }
@@ -244,7 +246,7 @@ public final class MapGenConfigManager {
                 0,0,6000,true,256,OutsidePlayableAreaMode.OCEAN_ONLY,"minecraft:deep_ocean",BiomePolicy.ALL_VANILLA_OVERWORLD,192,256,192,53,
                 true,"bca:default_city_large",250,1050,Rotation.NONE,240,true,
                 -1050,2200,620,500,205,
-                true,RouteStyle.MIXED,5,9,
+                true,false,false,RouteStyle.MIXED,5,9,
                 true,-950,-950,true
             ));
         }
