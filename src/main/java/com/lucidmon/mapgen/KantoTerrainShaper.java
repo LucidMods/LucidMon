@@ -15,9 +15,9 @@ import java.util.Locale;
 /**
  * Macro terrain shaper layered on top of vanilla Overworld noise.
  *
- * Layout v3 keeps vanilla caves/ores/local feature generation, but replaces the
- * previous uniform ramps with multi-scale terrain undulation, irregular mountain
- * shoulders, authored rivers/lakes, organic coasts and gently meandering routes.
+ * Layout v5 keeps vanilla caves/ores/local feature generation, but layers a connected
+ * authored drainage network over multi-scale terrain: elevated sources, lakes,
+ * tributaries, major rivers, natural banks and ocean mouths.
  */
 public final class KantoTerrainShaper {
     public static final int SEA_LEVEL = 63;
