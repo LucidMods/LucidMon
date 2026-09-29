@@ -116,7 +116,7 @@ public final class KantoHydrology {
         // major systems instead of terminating in open plains.
         river("nw_feeder",
                 List.of(new Point(-1780,-1480), new Point(-1600,-1260), new Point(-1420,-1080),
-                        new Point(-1260,-920), new Point(-1110,-780)),
+                        new Point(-1260,-920), new Point(-820,-850)),
                 3, 9, 116, 84, 3, 0x710201L, true),
 
         river("moon_feeder",
@@ -126,7 +126,7 @@ public final class KantoHydrology {
 
         river("northlake_feeder",
                 List.of(new Point(70,-1390), new Point(100,-1250), new Point(180,-1110),
-                        new Point(270,-980), new Point(360,-860)),
+                        new Point(270,-980), new Point(610,-820)),
                 3, 10, 108, 78, 3, 0x710203L, true),
 
         river("east_feeder",
@@ -141,7 +141,7 @@ public final class KantoHydrology {
 
         river("central_west_feeder",
                 List.of(new Point(-60,-1080), new Point(40,-940), new Point(180,-830),
-                        new Point(300,-720), new Point(520,-620)),
+                        new Point(300,-720), new Point(330,-650)),
                 3, 9, 108, 82, 3, 0x710206L, true),
 
         river("southwest_feeder",
@@ -156,7 +156,7 @@ public final class KantoHydrology {
 
         river("eastern_feeder",
                 List.of(new Point(1900,420), new Point(1810,520), new Point(1740,650),
-                        new Point(1700,790)),
+                        new Point(1820,870)),
                 3, 9, 94, 78, 3, 0x710209L, true)
     );
 
