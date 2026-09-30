@@ -15,9 +15,9 @@ import java.util.Locale;
 /**
  * Macro terrain shaper layered on top of vanilla Overworld noise.
  *
- * Layout v5 keeps vanilla caves/ores/local feature generation, but layers a connected
+ * Layout v6 keeps vanilla caves/ores/local feature generation, but layers a connected
  * authored drainage network over multi-scale terrain: elevated sources, lakes,
- * tributaries, major rivers, natural banks and ocean mouths.
+ * tributaries, major rivers, natural banks, carved beds and ocean mouths.
  */
 public final class KantoTerrainShaper {
     public static final int SEA_LEVEL = 63;
