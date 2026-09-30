@@ -150,7 +150,7 @@ public final class KantoTerrainShaper {
             for (int lz = 0; lz < 16; lz++) {
                 int x = baseX + lx, z = baseZ + lz;
                 int target = Math.max(minY + 5, Math.min(maxY - 2, targetSurfaceY(x, z, random)));
-                int water = Math.min(maxY - 1, waterSurfaceY(x, z));
+                int water = Math.min(maxY - 1, waterSurfaceY(x, z, random));
                 int current = chunk.getHeight(Heightmap.Types.WORLD_SURFACE_WG, lx, lz);
 
                 // Remove everything above the desired land/bed surface. Water is
