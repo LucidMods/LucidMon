@@ -103,19 +103,30 @@ public final class KantoTerrainShaper {
         if (!insidePlayable(x, z, cfg) || !insideSafeLand(x, z, cfg)) return SEA_LEVEL;
         if (macroLandScore(x, z, cfg, layout) <= 0.0) return SEA_LEVEL;
         KantoHydrology.Sample hydro = KantoHydrology.sample(x, z, cfg);
-        return hydro.hasWater() ? hydro.waterY() : Integer.MIN_VALUE;
+        if (!hydro.hasWater()) return Integer.MIN_VALUE;
+        return resolveWaterSurfaceY(hydro, targetSurfaceYNoHydrology(x, z));
+    }
+
+    private static int waterSurfaceY(int x, int z, RandomState random) {
+        MapGenConfigManager.KantoConfig cfg = MapGenConfigManager.current.kanto();
+        KantoLayout layout = KantoLayout.current();
+        if (!insidePlayable(x, z, cfg) || !insideSafeLand(x, z, cfg)) return SEA_LEVEL;
+        if (macroLandScore(x, z, cfg, layout) <= 0.0) return SEA_LEVEL;
+        KantoHydrology.Sample hydro = KantoHydrology.sample(x, z, cfg);
+        if (!hydro.hasWater()) return Integer.MIN_VALUE;
+        return resolveWaterSurfaceY(hydro, targetSurfaceYNoHydrology(x, z, random));
     }
 
     public static int baseHeight(int x, int z, Heightmap.Types type, RandomState random) {
         int surface = targetSurfaceY(x, z, random);
-        int water = waterSurfaceY(x, z);
+        int water = waterSurfaceY(x, z, random);
         if (water > surface) return isOceanFloor(type) ? surface + 1 : water + 1;
         return surface + 1;
     }
 
     public static NoiseColumn baseColumn(int x, int z, int minY, int maxY, RandomState random) {
         int surface = targetSurfaceY(x, z, random);
-        int water = waterSurfaceY(x, z);
+        int water = waterSurfaceY(x, z, random);
         BlockState[] states = new BlockState[Math.max(0, maxY - minY)];
         for (int y = minY; y < maxY; y++) {
             BlockState state;
@@ -152,7 +163,16 @@ public final class KantoTerrainShaper {
                 chunk.setBlockState(pos.set(x, target, z), Blocks.STONE.defaultBlockState(), false);
 
                 if (water > target) {
-                    for (int y = target + 1; y <= water; y++) chunk.setBlockState(pos.set(x, y, z), Blocks.WATER.defaultBlockState(), false);
+                    for (int y = target + 1; y <= water; y++) {
+                        chunk.setBlockState(pos.set(x, y, z), Blocks.WATER.defaultBlockState(), false);
+                    }
+                }
+
+                KantoHydrology.Sample hydro = KantoHydrology.sample(x, z, MapGenConfigManager.current.kanto());
+                if (hydro.hasWater() && hydro.channel() > 0.08 && water > target) {
+                    // A real channel has a material floor rather than an
+                    // exposed stone shelf directly beneath the water.
+                    chunk.setBlockState(pos.set(x, target, z), Blocks.GRAVEL.defaultBlockState(), false);
                 }
 
                 applyVolcanoLava(chunk, pos, x, z, target);
@@ -232,16 +252,77 @@ public final class KantoTerrainShaper {
         if (!hydro.affectsTerrain()) return y;
 
         if (hydro.hasWater()) {
-            // Keep at least the authored depth while allowing naturally lower
-            // ground to remain lower instead of building artificial dams.
-            return Math.min(y, hydro.bedY());
+            /*
+             * River elevation is constrained by the terrain it is crossing.
+             * The authored waterY supplies the intended downstream gradient,
+             * but it can never float above the local natural surface. This is
+             * the key distinction between a carved river and a raised canal.
+             */
+            int waterY = resolveWaterSurfaceY(hydro, y);
+            int authoredDepth = Math.max(2, hydro.waterY() - hydro.bedY());
+            double center = Math.pow(clamp01(hydro.channel()), 0.70);
+            int localDepth = Math.max(1, (int)Math.round(1.0 + (authoredDepth - 1.0) * center));
+            int bedY = waterY - localDepth;
+            return Math.min(y, bedY);
         }
 
         // Outside open water, ease banks toward the waterline rather than
         // slicing vertical trenches into otherwise smooth terrain.
         double blend = smoothStep(clamp01(hydro.bank())) * 0.70;
-        int bankTarget = hydro.waterY() + 2;
+        int bankTarget = resolveWaterSurfaceY(hydro, y) + 2;
         return Math.min(y, (int)Math.round(y * (1.0 - blend) + bankTarget * blend));
+    }
+
+    private static int resolveWaterSurfaceY(KantoHydrology.Sample hydro, int naturalSurfaceY) {
+        if (!hydro.hasWater()) return Integer.MIN_VALUE;
+        /*
+         * Keep the water inside the landscape. At high headwaters the authored
+         * elevation is retained; as terrain falls away the channel follows the
+         * valley floor instead of becoming an elevated sheet of water.
+         */
+        int terrainLimited = naturalSurfaceY - 1;
+        int waterY = Math.min(hydro.waterY(), terrainLimited);
+        return Math.max(SEA_LEVEL, waterY);
+    }
+
+    private static int targetSurfaceYNoHydrology(int x, int z) {
+        MapGenConfigManager.KantoConfig cfg = MapGenConfigManager.current.kanto();
+        KantoLayout layout = KantoLayout.current();
+        if (!insidePlayable(x, z, cfg) || !insideSafeLand(x, z, cfg)) return 52;
+
+        double macro = macroLandScore(x, z, cfg, layout);
+        if (macro <= 0.0) return 52;
+
+        double inland = smoothStep(clamp01(macro / 1.24));
+        double macroN = KantoShape.fixedNoise(x, z, 0x731001L, 920.0) * 9.0;
+        double regionalN = KantoShape.fixedNoise(x, z, 0x731002L, 340.0) * 6.0;
+        double localN = KantoShape.fixedNoise(x, z, 0x731003L, 110.0) * 2.5;
+        int lowland = SEA_LEVEL + 1 + (int)Math.round(inland * 10.0 + (macroN + regionalN + localN) * inland);
+        lowland = Math.max(SEA_LEVEL + 1, lowland);
+
+        int mountainous = applyMountains(lowland, x, z, cfg, layout);
+        double mountainBlend = smoothStep(clamp01(macro / 0.76));
+        int y = (int)Math.round(lowland + (mountainous - lowland) * mountainBlend);
+        y = applySettlementFlattening(y, x, z, layout);
+        return y;
+    }
+
+    private static int targetSurfaceYNoHydrology(int x, int z, RandomState random) {
+        MapGenConfigManager.KantoConfig cfg = MapGenConfigManager.current.kanto();
+        KantoLayout layout = KantoLayout.current();
+        if (!insidePlayable(x, z, cfg) || !insideSafeLand(x, z, cfg)) return 52;
+
+        double macro = macroLandScore(x, z, cfg, layout);
+        if (macro <= 0.0) return 52;
+
+        double inland = smoothStep(clamp01(macro / 1.24));
+        int lowland = naturalLowlandY(x, z, random, inland);
+        int mountainous = applyMountains(lowland, x, z, cfg, layout);
+        double mountainBlend = smoothStep(clamp01(macro / 0.76));
+        int y = (int)Math.round(lowland + (mountainous - lowland) * mountainBlend);
+        y = applySettlementFlattening(y, x, z, layout);
+        y = applyRouteGrading(y, x, z, cfg, layout, random);
+        return y;
     }
 
     private static int applyMountains(int base, int x, int z, MapGenConfigManager.KantoConfig cfg, KantoLayout layout) {
