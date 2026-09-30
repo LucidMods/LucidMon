@@ -23,7 +23,7 @@ import java.util.HexFormat;
 public final class KantoMapGen {
     public static final ResourceLocation BIOME_SOURCE_ID = ResourceLocation.fromNamespaceAndPath("lucidmon", "kanto");
     public static final String WORLD_PRESET_ID = "lucidmon:kanto_archipelago";
-    public static final int PROFILE_LAYOUT_VERSION = 5;
+    public static final int PROFILE_LAYOUT_VERSION = 6;
     private static volatile boolean active;
     private static volatile String activationMessage = "Kanto world has not been loaded yet.";
 

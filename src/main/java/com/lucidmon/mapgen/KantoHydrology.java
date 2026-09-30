@@ -5,7 +5,7 @@ import com.lucidmon.core.MapGenConfigManager;
 import java.util.List;
 
 /**
- * Deterministic authored drainage network for KANTO_ARCHIPELAGO layout v4.
+ * Deterministic authored drainage network for KANTO_ARCHIPELAGO layout v6.
  *
  * Rivers are modeled as connected drainage systems rather than independent
  * north/south polylines. Major rivers begin in high terrain or at elevated
