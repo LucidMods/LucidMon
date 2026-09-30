@@ -1,9 +1,8 @@
 {
   "required": true,
-  "package": "com.lucidmon.mapgen.mixin",
+  "package": "com.lucidmon.core.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "NoiseBasedChunkGeneratorMixin",
     "RgsStructureSuppressionMixin"
   ],
   "injectors": {

@@ -1,4 +1,4 @@
-package com.lucidmon.mapgen.mixin;
+package com.lucidmon.core.mixin;
 
 import com.lucidmon.core.ConfigManager;
 import net.minecraft.core.RegistryAccess;
