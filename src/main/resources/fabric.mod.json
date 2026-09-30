@@ -3,7 +3,7 @@
   "id": "lucidmon",
   "version": "${version}",
   "name": "LucidMon",
-  "description": "UNSTABLE LucidMon Cobblemon tournament framework: Kanto Archipelago MapGen, core config, manual RGS gym placement scaffold, Map Reveal, Soulpack, and Cobblemon 1.8-compatible Virtual Pasture.",
+  "description": "UNSTABLE LucidMon Cobblemon tournament framework: core config, manual RGS gym placement scaffold, Map Reveal, Soulpack, and Cobblemon 1.8-compatible Virtual Pasture.",
   "authors": [
     "LucidMon"
   ],
