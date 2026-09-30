@@ -1,6 +1,5 @@
 package com.lucidmon.core;
 
-import com.lucidmon.mapgen.KantoMapGen;
 import net.fabricmc.api.ModInitializer;
 
 public final class LucidMon implements ModInitializer {
@@ -11,8 +10,6 @@ public final class LucidMon implements ModInitializer {
     public void onInitialize() {
         log("Starting LucidMon " + DISPLAY_VERSION + " for Minecraft 1.21.1 / Fabric.");
         ConfigManager.load();
-        MapGenConfigManager.load();
-        KantoMapGen.register();
         CommandBridge.register();
         log("Modules bundled in this test build: Kanto layout v3 warped geography/hydrology, configurable RGS gym suppression, League gym placement scaffold, Map Reveal v3, Soulpack v9, Virtual Pasture Cobblemon 1.8 compatibility build.");
         log("MapGen note: STANDARD leaves terrain generation unchanged. KANTO_ARCHIPELAGO requires mapType=KANTO_ARCHIPELAGO plus a world created with the LucidMon: Kanto Archipelago preset (dedicated servers: level-type=lucidmon:kanto_archipelago).");
