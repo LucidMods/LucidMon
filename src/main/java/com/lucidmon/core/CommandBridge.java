@@ -59,12 +59,6 @@ public final class CommandBridge {
             .then(commandLiteral("status", LeagueManager::cmdMapStatus))
             .then(commandLiteral("config", LeagueManager::cmdMapConfig)));
 
-        root.then(Commands.literal("mapgen")
-            .then(commandLiteral("status", LeagueManager::cmdMapGenStatus))
-            .then(commandLiteral("validate", LeagueManager::cmdMapGenValidate))
-            .then(commandLiteral("preflight", LeagueManager::cmdMapGenPreflight))
-            .then(commandLiteral("audit-biomes", LeagueManager::cmdMapGenAuditBiomes)));
-
         root.then(Commands.literal("soulpack")
             .then(commandLiteral("reset", LeagueManager::cmdSoulpackReset))
             .then(commandLiteral("debug", LeagueManager::cmdSoulpackDebug)));
