@@ -3,8 +3,8 @@ package com.lucidmon.core;
 import net.fabricmc.api.ModInitializer;
 
 public final class LucidMon implements ModInitializer {
-    public static final String VERSION = "0.1.2-unstable.7";
-    public static final String DISPLAY_VERSION = "v0.1.2 [UNSTABLE]";
+    public static final String VERSION = "0.1.2-unstable.11";
+    public static final String DISPLAY_VERSION = "v0.1.2-unstable.11 [UNSTABLE]";
 
     @Override
     public void onInitialize() {
